@@ -1,0 +1,108 @@
+{
+  "generated_at": "2026-05-24T00:18:34",
+  "reports": [
+    {
+      "name": "分段拉格朗日",
+      "method": "Lagrange-Piecewise",
+      "degree": 4,
+      "equation": "\n  [-5.0000, -4.7959]: -0.3601*x^4 - 6.6188*x^3 - 44.7184*x^2 - 133.4493*x - 144.5445\n  [-4.7959, -4.5918]: -0.3601*x^4 - 6.6188*x^3 - 44.7184*x^2 - 133.4493*x - 144.5445\n  [-4.5918, -4.3878]: -14.6409*x^4 - 263.0895*x^3 - 1770.4833*x^2 - 5290.1025*x - 5917.6514\n  ... (共 44 段，重心插值)",
+      "n_samples": 45,
+      "metrics": {
+        "mae": 0.0,
+        "mse": 0.0,
+        "rmse": 0.0,
+        "r2": 1.0,
+        "max_abs_error": 0.0,
+        "mean_abs_percent_error": 0.0,
+        "bias": 0.0
+      },
+      "extra": {
+        "piecewise": true,
+        "window": 5
+      },
+      "generated_at": "2026-05-24T00:18:34"
+    },
+    {
+      "name": "精确样条",
+      "method": "Spline-Cubic",
+      "degree": null,
+      "equation": "",
+      "n_samples": 45,
+      "metrics": {
+        "mae": 0.0,
+        "mse": 0.0,
+        "rmse": 0.0,
+        "r2": 1.0,
+        "max_abs_error": 0.0,
+        "mean_abs_percent_error": 0.0,
+        "bias": -0.0
+      },
+      "extra": {
+        "bc_type": "not-a-knot"
+      },
+      "generated_at": "2026-05-24T00:18:34"
+    },
+    {
+      "name": "平滑样条",
+      "method": "Spline-Smoothing",
+      "degree": null,
+      "equation": "",
+      "n_samples": 45,
+      "metrics": {
+        "mae": 0.416187,
+        "mse": 0.235439,
+        "rmse": 0.48522,
+        "r2": 0.940721,
+        "max_abs_error": 1.110053,
+        "mean_abs_percent_error": 50.019991,
+        "bias": -0.0
+      },
+      "extra": {
+        "s": 35.51316701949486
+      },
+      "generated_at": "2026-05-24T00:18:34"
+    },
+    {
+      "name": "单调样条",
+      "method": "Spline-Monotone",
+      "degree": null,
+      "equation": "",
+      "n_samples": 45,
+      "metrics": {
+        "mae": 0.0,
+        "mse": 0.0,
+        "rmse": 0.0,
+        "r2": 1.0,
+        "max_abs_error": 0.0,
+        "mean_abs_percent_error": 0.0,
+        "bias": 0.0
+      },
+      "extra": {},
+      "generated_at": "2026-05-24T00:18:34"
+    },
+    {
+      "name": "多项式拟合(CV+Ridge)",
+      "method": "Polynomial-CV",
+      "degree": 8,
+      "equation": "0.0000*x^8 - 0.0000*x^7 - 0.0005*x^6 + 0.0050*x^5 + 0.0094*x^4 - 0.1494*x^3 + 0.1455*x^2 + 0.9366*x + 0.0765",
+      "n_samples": 45,
+      "metrics": {
+        "mae": 0.119821,
+        "mse": 0.023369,
+        "rmse": 0.152868,
+        "r2": 0.994116,
+        "max_abs_error": 0.460363,
+        "mean_abs_percent_error": 14.513042,
+        "bias": -0.0017
+      },
+      "extra": {
+        "r2": 0.9941161901903696,
+        "rmse": 0.15286834077435435,
+        "cv_rmse": 0.18836119831031284,
+        "condition": 367240.7934661999,
+        "ridge": 1.0
+      },
+      "generated_at": "2026-05-24T00:18:34"
+    }
+  ]
+}
