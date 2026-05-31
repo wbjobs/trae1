@@ -1,0 +1,243 @@
+syntax = "proto3";
+
+package configcenter;
+
+option java_package = "com.configcenter.proto";
+option java_multiple_files = true;
+option java_outer_classname = "ConfigCenterProto";
+
+message ConfigKey {
+    string application = 1;
+    string profile = 2;
+    string key = 3;
+}
+
+message ConfigEntry {
+    ConfigKey configKey = 1;
+    string content = 2;
+    int64 version = 3;
+    int64 updatedAt = 4;
+    string updatedBy = 5;
+}
+
+message GetConfigRequest {
+    ConfigKey configKey = 1;
+}
+
+message GetConfigResponse {
+    ConfigEntry entry = 1;
+}
+
+message PublishConfigRequest {
+    ConfigKey configKey = 1;
+    string content = 2;
+    string operator = 3;
+}
+
+message PublishConfigResponse {
+    ConfigEntry entry = 1;
+}
+
+message WatchConfigRequest {
+    ConfigKey configKey = 1;
+    int64 sinceVersion = 2;
+    string instanceId = 3;
+    string clientIp = 4;
+}
+
+message WatchConfigResponse {
+    ConfigEntry entry = 1;
+    string eventType = 2;
+    bool grayscale = 3;
+    string batchId = 4;
+}
+
+message HistoryRequest {
+    ConfigKey configKey = 1;
+    int32 limit = 2;
+}
+
+message HistoryEntry {
+    int64 version = 1;
+    string content = 2;
+    string operator = 3;
+    int64 changedAt = 4;
+    string changeType = 5;
+    string diff = 6;
+}
+
+message HistoryResponse {
+    repeated HistoryEntry entries = 1;
+}
+
+message RollbackRequest {
+    ConfigKey configKey = 1;
+    int64 targetVersion = 2;
+    string operator = 3;
+}
+
+message RollbackResponse {
+    ConfigEntry entry = 1;
+}
+
+message ListAppsRequest {}
+
+message ListAppsResponse {
+    repeated string applications = 1;
+}
+
+message ListProfilesRequest {
+    string application = 1;
+}
+
+message ListProfilesResponse {
+    repeated string profiles = 1;
+}
+
+message ListKeysRequest {
+    string application = 1;
+    string profile = 2;
+}
+
+message ListKeysResponse {
+    repeated string keys = 1;
+}
+
+// ------------------------------------------------------------------
+// Grayscale
+// ------------------------------------------------------------------
+
+message GrayscaleBatch {
+    string batchId = 1;
+    ConfigKey configKey = 2;
+    string content = 3;
+    int64 targetVersion = 4;
+    int32 percent = 5;
+    int64 observeWindowSec = 6;
+    string operator = 7;
+    int64 createdAt = 8;
+    string status = 9;
+    int32 errorThresholdPct = 10;
+    int64 resolvedAt = 11;
+    string resolution = 12;
+    string diff = 13;
+}
+
+message StartGrayscaleRequest {
+    ConfigKey configKey = 1;
+    string content = 2;
+    int32 percent = 3;
+    int64 observeWindowSec = 4;
+    string operator = 5;
+    int32 errorThresholdPct = 6;
+}
+
+message StartGrayscaleResponse {
+    GrayscaleBatch batch = 1;
+    ConfigEntry grayEntry = 2;
+}
+
+message CancelGrayscaleRequest {
+    string batchId = 1;
+    string operator = 2;
+}
+
+message CancelGrayscaleResponse {
+    GrayscaleBatch batch = 1;
+}
+
+message PromoteGrayscaleRequest {
+    string batchId = 1;
+    string operator = 2;
+}
+
+message PromoteGrayscaleResponse {
+    GrayscaleBatch batch = 1;
+    ConfigEntry promotedEntry = 2;
+}
+
+message GetGrayscaleStatusRequest {
+    string batchId = 1;
+}
+
+message GetGrayscaleStatusResponse {
+    GrayscaleBatch batch = 1;
+    int32 totalClients = 2;
+    int32 grayClients = 3;
+    int32 healthyClients = 4;
+    int32 errorClients = 5;
+    int32 upgradedClients = 6;
+    double errorRatePct = 7;
+    int64 remainingSec = 8;
+}
+
+message ListGrayscaleBatchesRequest {
+    ConfigKey configKey = 1;
+    bool onlyActive = 2;
+}
+
+message ListGrayscaleBatchesResponse {
+    repeated GrayscaleBatch batches = 1;
+}
+
+// ------------------------------------------------------------------
+// Client heartbeat
+// ------------------------------------------------------------------
+
+message ClientHeartbeat {
+    string instanceId = 1;
+    string clientIp = 2;
+    string application = 3;
+    string profile = 4;
+    int64 version = 5;
+    bool healthy = 6;
+    string errorMessage = 7;
+    int64 reportedAt = 8;
+}
+
+message ClientStateAck {
+    bool ok = 1;
+    string message = 2;
+}
+
+message ListClientsRequest {
+    string application = 1;
+    string profile = 2;
+}
+
+message ClientView {
+    string instanceId = 1;
+    string clientIp = 2;
+    string application = 3;
+    string profile = 4;
+    int64 version = 5;
+    bool healthy = 6;
+    string errorMessage = 7;
+    int64 lastSeenAt = 8;
+    bool grayscale = 9;
+    string batchId = 10;
+}
+
+message ListClientsResponse {
+    repeated ClientView clients = 1;
+}
+
+service ConfigService {
+    rpc GetConfig(GetConfigRequest) returns (GetConfigResponse);
+    rpc PublishConfig(PublishConfigRequest) returns (PublishConfigResponse);
+    rpc WatchConfig(WatchConfigRequest) returns (stream WatchConfigResponse);
+    rpc GetHistory(HistoryRequest) returns (HistoryResponse);
+    rpc Rollback(RollbackRequest) returns (RollbackResponse);
+    rpc ListApps(ListAppsRequest) returns (ListAppsResponse);
+    rpc ListProfiles(ListProfilesRequest) returns (ListProfilesResponse);
+    rpc ListKeys(ListKeysRequest) returns (ListKeysResponse);
+
+    rpc StartGrayscale(StartGrayscaleRequest) returns (StartGrayscaleResponse);
+    rpc CancelGrayscale(CancelGrayscaleRequest) returns (CancelGrayscaleResponse);
+    rpc PromoteGrayscale(PromoteGrayscaleRequest) returns (PromoteGrayscaleResponse);
+    rpc GetGrayscaleStatus(GetGrayscaleStatusRequest) returns (GetGrayscaleStatusResponse);
+    rpc ListGrayscaleBatches(ListGrayscaleBatchesRequest) returns (ListGrayscaleBatchesResponse);
+
+    rpc ReportClientState(ClientHeartbeat) returns (ClientStateAck);
+    rpc ListClients(ListClientsRequest) returns (ListClientsResponse);
+}
