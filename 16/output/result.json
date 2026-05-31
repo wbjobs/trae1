@@ -1,0 +1,143 @@
+{
+  "solution": [
+    1.9318516525781366,
+    0.5176380902050415
+  ],
+  "status": "converged",
+  "iterations": 6,
+  "residual_norm": 1.1102230246251565e-16,
+  "message": "收敛于第 6 次迭代",
+  "history": [
+    {
+      "iteration": 0,
+      "x": [
+        2.0,
+        0.5
+      ],
+      "residual": [
+        0.25,
+        0.0
+      ],
+      "residual_norm": 0.25,
+      "step_norm": 0.05497474167490204
+    },
+    {
+      "iteration": 1,
+      "x": [
+        1.9466666666666668,
+        0.5133333333333333
+      ],
+      "residual": [
+        0.053022222222222304,
+        -0.0007111111111111068
+      ],
+      "residual_norm": 0.05302699056513645,
+      "step_norm": 0.013500180034439008
+    },
+    {
+      "iteration": 2,
+      "x": [
+        1.9336954433730384,
+        0.5170752883342786
+      ],
+      "residual": [
+        0.006544921527629199,
+        -0.00013387106720541553
+      ],
+      "residual_norm": 0.006546290496568179,
+      "step_norm": 0.0018647419442350175
+    },
+    {
+      "iteration": 3,
+      "x": [
+        1.9319118053056703,
+        0.5176192531890483
+      ],
+      "residual": [
+        0.00021291475140206018,
+        -5.254110572838755e-06
+      ],
+      "residual_norm": 0.00021297956954250967,
+      "step_norm": 6.303169972381842e-05
+    },
+    {
+      "iteration": 4,
+      "x": [
+        1.9318516538552677,
+        0.517638089276342
+      ],
+      "residual": [
+        3.972995266110502e-09,
+        -1.1330179017221553e-09
+      ],
+      "residual_norm": 4.131394552709694e-09,
+      "step_norm": 1.5790967144004692e-09
+    },
+    {
+      "iteration": 5,
+      "x": [
+        1.9318516525781366,
+        0.5176380902050415
+      ],
+      "residual": [
+        0.0,
+        -1.1102230246251565e-16
+      ],
+      "residual_norm": 1.1102230246251565e-16,
+      "step_norm": 0.0
+    }
+  ],
+  "export_time": "2026-05-23T23:13:20.239547",
+  "additional": {
+    "status": "converged",
+    "iterations": 6,
+    "message": "收敛于第 6 次迭代",
+    "residual_norm": 1.1102230246251565e-16,
+    "solution_verification": {
+      "residual_norms": {
+        "l1": 1.1102230246251565e-16,
+        "l2": 1.1102230246251565e-16,
+        "linf": 1.1102230246251565e-16,
+        "rms": 7.850462293418876e-17
+      },
+      "jacobian_condition_number": 2.4842086727071315,
+      "is_solution_valid": true,
+      "residual": [
+        0.0,
+        -1.1102230246251565e-16
+      ]
+    },
+    "solution_validation": {
+      "is_valid": true,
+      "residual_norm": 1.1102230246251565e-16,
+      "residual_rms": 7.850462293418876e-17,
+      "residual_max": 1.1102230246251565e-16,
+      "jacobian_condition": 2.4842086727071315,
+      "has_nan": false,
+      "has_inf": false,
+      "in_domain": true,
+      "domain_check_message": "",
+      "convergence_order": 0.0,
+      "validation_score": 100.0
+    },
+    "convergence_analysis": {
+      "convergence_ratio": 0.07362276475573057,
+      "convergence_type": "快速收敛",
+      "convergence_order": 2.0,
+      "all_ratios": [
+        0.2121079622605458,
+        0.12345204634094689,
+        0.03253439022514535,
+        1.9398079175313047e-05,
+        2.6872839436189526e-08
+      ]
+    },
+    "final_residual_norms": {
+      "l1": 1.1102230246251565e-16,
+      "l2": 1.1102230246251565e-16,
+      "linf": 1.1102230246251565e-16,
+      "rms": 7.850462293418876e-17
+    },
+    "efficiency_score": 100.0
+  }
+}
