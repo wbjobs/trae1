@@ -1,0 +1,8 @@
+id: mask-id-card
+name: Mask ID Card
+tableName: mydb.users
+columnName: id_card
+type: id_card
+description: Mask ID card number, keep first 6 and last 4
+enabled: true
+version: 1

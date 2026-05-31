@@ -1,0 +1,8 @@
+id: mask-phone
+name: Mask Phone Number
+tableName: mydb.users
+columnName: phone
+type: phone
+description: Mask phone number middle 4 digits
+enabled: true
+version: 1

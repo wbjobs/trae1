@@ -1,0 +1,8 @@
+id: mask-email
+name: Mask Email
+tableName: mydb.users
+columnName: email
+type: email
+description: Mask email address username
+enabled: true
+version: 1

@@ -1,0 +1,8 @@
+id: filter-underage
+name: Filter Underage Users
+tableName: mydb.users
+condition: age < 18
+action: exclude
+description: Exclude users under 18 years old
+enabled: true
+version: 1

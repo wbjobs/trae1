@@ -1,0 +1,123 @@
+name: mysql-cdc-sync
+
+database:
+  type: mysql
+  hostname: localhost
+  port: 3306
+  username: root
+  password: password
+  database: mydb
+  serverId: 1
+  serverName: mysql-server
+
+kafka:
+  bootstrapServers: localhost:9092
+  topicPrefix: cdc
+  acks: all
+  retries: 3
+  batchSize: 16384
+  lingerMs: 5
+  bufferMemory: 33554432
+  compressionType: snappy
+
+schemaRegistry:
+  url: http://localhost:8081
+  compatibilityLevel: backward
+  autoRegister: true
+
+snapshotMode: initial
+
+ddl:
+  policy: auto
+  autoApplySafeConversions: true
+  pauseTableOnFailure: true
+  stateStorePath: ./data/ddl-state
+  alert:
+    enabled: false
+    dingtalk:
+      webhookUrl: https://oapi.dingtalk.com/robot/send?access_token=YOUR_TOKEN
+      secret: YOUR_SECRET
+      atMobiles:
+        - 13800138000
+      atAll: false
+
+dataMasking:
+  enabled: false
+  scriptTimeoutMs: 50
+  degradeOnTimeout: true
+  cacheSize: 1000
+  rules:
+    - id: mask-phone
+      name: Mask Phone Number
+      tableName: mydb.users
+      columnName: phone
+      type: phone
+      description: Mask phone number middle 4 digits
+      enabled: true
+      version: 1
+
+    - id: mask-idcard
+      name: Mask ID Card
+      tableName: mydb.users
+      columnName: id_card
+      type: id_card
+      description: Mask ID card number
+      enabled: true
+      version: 1
+
+    - id: mask-email
+      name: Mask Email
+      tableName: mydb.users
+      columnName: email
+      type: email
+      description: Mask email address
+      enabled: true
+      version: 1
+
+    - id: custom-mask
+      name: Custom Mask
+      tableName: mydb.users
+      columnName: sensitive_data
+      type: custom
+      script: |
+        if (value.length() <= 6) {
+          return MaskingFunctions.fullMask(value)
+        }
+        return value.substring(0, 3) + '***' + value.substring(value.length() - 3)
+      description: Custom masking for sensitive data
+      enabled: true
+      version: 1
+
+  rowFilters:
+    - id: filter-underage
+      name: Filter Underage Users
+      tableName: mydb.users
+      condition: age < 18
+      action: exclude
+      description: Exclude users under 18 years old
+      enabled: true
+      version: 1
+
+  ruleRepository:
+    type: local
+    localPath: ./rules
+    autoReload: true
+    reloadIntervalMs: 60000
+
+tableFilters:
+  - tableName: mydb.users
+    includedColumns:
+      - id
+      - name
+      - email
+    topicName: cdc.users
+
+  - tableName: mydb.orders
+    excludedColumns:
+      - sensitive_data
+      - internal_notes
+
+metrics:
+  enabled: true
+  port: 9090
+  path: /metrics

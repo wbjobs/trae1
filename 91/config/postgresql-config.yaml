@@ -1,0 +1,96 @@
+name: postgresql-cdc-sync
+
+database:
+  type: postgresql
+  hostname: localhost
+  port: 5432
+  username: postgres
+  password: password
+  database: mydb
+  serverId: 2
+  serverName: postgres-server
+
+kafka:
+  bootstrapServers: localhost:9092
+  topicPrefix: cdc
+  acks: all
+  retries: 3
+  batchSize: 16384
+  lingerMs: 5
+  bufferMemory: 33554432
+  compressionType: snappy
+
+schemaRegistry:
+  url: http://localhost:8081
+  compatibilityLevel: backward
+  autoRegister: true
+
+snapshotMode: initial
+
+ddl:
+  policy: auto
+  autoApplySafeConversions: true
+  pauseTableOnFailure: true
+  stateStorePath: ./data/ddl-state
+  alert:
+    enabled: false
+    dingtalk:
+      webhookUrl: https://oapi.dingtalk.com/robot/send?access_token=YOUR_TOKEN
+      secret: YOUR_SECRET
+      atMobiles:
+        - 13800138000
+      atAll: false
+
+dataMasking:
+  enabled: false
+  scriptTimeoutMs: 50
+  degradeOnTimeout: true
+  cacheSize: 1000
+  rules:
+    - id: mask-phone
+      name: Mask Phone Number
+      tableName: public.users
+      columnName: phone
+      type: phone
+      description: Mask phone number middle 4 digits
+      enabled: true
+      version: 1
+
+    - id: mask-email
+      name: Mask Email
+      tableName: public.users
+      columnName: email
+      type: email
+      description: Mask email address
+      enabled: true
+      version: 1
+
+  rowFilters:
+    - id: filter-underage
+      name: Filter Underage Users
+      tableName: public.users
+      condition: age < 18
+      action: exclude
+      description: Exclude users under 18 years old
+      enabled: true
+      version: 1
+
+  ruleRepository:
+    type: local
+    localPath: ./rules
+    autoReload: true
+    reloadIntervalMs: 60000
+
+tableFilters:
+  - tableName: public.users
+    includedColumns:
+      - id
+      - name
+    topicName: cdc.public.users
+
+  - tableName: public.products
+
+metrics:
+  enabled: true
+  port: 9090
+  path: /metrics
