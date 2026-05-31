@@ -1,0 +1,29 @@
+{
+  "original": {
+    "max_eigenvalue_error": 1.1001506652732742,
+    "max_eigenvector_error": 40.824509109900795,
+    "avg_relative_error": 16.447225389829992
+  },
+  "refined": {
+    "max_eigenvalue_error": 0.023806164940234166,
+    "max_eigenvector_error": 0.8834017268289154,
+    "avg_relative_error": 0.11042635886162877
+  },
+  "validation": {
+    "is_valid": false,
+    "methods": {
+      "residual": false,
+      "trace": false,
+      "determinant": false,
+      "orthogonality": false,
+      "spectral_decomposition": false
+    },
+    "errors": {
+      "max_residual": 0.8834017268289154,
+      "trace_error": 0.15918857612296833,
+      "determinant_error": 682609.1169565842,
+      "orthogonality_error": 0.2508762192331631,
+      "spectral_decomposition_error": 0.8976387231715014
+    }
+  }
+}

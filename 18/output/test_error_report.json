@@ -1,0 +1,13 @@
+{
+  "original": {
+    "max_eigenvalue_error": 5.649392936487571e-16,
+    "max_eigenvector_error": 4.189828021541602e-15,
+    "avg_relative_error": 3.4369427111776377e-15
+  },
+  "refined": {
+    "max_eigenvalue_error": 7.704468873826922e-17,
+    "max_eigenvector_error": 5.713958993747209e-16,
+    "avg_relative_error": 5.035568237383915e-16
+  },
+  "method": "inverse_iteration"
+}

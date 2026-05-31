@@ -1,0 +1,86 @@
+[
+  {
+    "iteration": 0,
+    "shift": 0.5753565248047637,
+    "max_off_diagonal": 2.6840989023029325,
+    "residual_norm": 1.6895957482342574
+  },
+  {
+    "iteration": 1,
+    "shift": 0.10166542995700492,
+    "max_off_diagonal": 2.752217059738214,
+    "residual_norm": 1.5379408120679978
+  },
+  {
+    "iteration": 2,
+    "shift": -1.3614425025946761,
+    "max_off_diagonal": 2.462611634649589,
+    "residual_norm": 1.4428493899593733
+  },
+  {
+    "iteration": 3,
+    "shift": -0.887739424108271,
+    "max_off_diagonal": 3.3570471332917617,
+    "residual_norm": 1.2975045719633882
+  },
+  {
+    "iteration": 4,
+    "shift": -1.0296858408811962,
+    "max_off_diagonal": 3.697896581986163,
+    "residual_norm": 1.5292732034041618
+  },
+  {
+    "iteration": 5,
+    "shift": -1.024246366891915,
+    "max_off_diagonal": 4.146628354493743,
+    "residual_norm": 1.3366971929868228
+  },
+  {
+    "iteration": 6,
+    "shift": -1.0242710142078582,
+    "max_off_diagonal": 2.5305357475902386,
+    "residual_norm": 1.3696909456666766
+  },
+  {
+    "iteration": 7,
+    "shift": -1.024271013588279,
+    "max_off_diagonal": 2.4768298304347485,
+    "residual_norm": 0.9856874344612833
+  },
+  {
+    "iteration": 8,
+    "shift": -1.024271013588279,
+    "max_off_diagonal": 1.670726863944882,
+    "residual_norm": 0.7262559018599098
+  },
+  {
+    "iteration": 9,
+    "shift": -1.024271013588279,
+    "max_off_diagonal": 1.1919440048892174,
+    "residual_norm": 0.5884356309621677
+  },
+  {
+    "iteration": 10,
+    "shift": -1.024271013588279,
+    "max_off_diagonal": 1.0003189398945889,
+    "residual_norm": 0.5351382766932553
+  },
+  {
+    "iteration": 11,
+    "shift": -1.024271013588279,
+    "max_off_diagonal": 1.0003366324271772,
+    "residual_norm": 0.36889834819540296
+  },
+  {
+    "iteration": 12,
+    "shift": -1.024271013588279,
+    "max_off_diagonal": 0.1653219641327149,
+    "residual_norm": 0.08266098206635747
+  },
+  {
+    "iteration": 13,
+    "shift": -1.024271013588279,
+    "max_off_diagonal": 9.215073777183483e-17,
+    "residual_norm": 9.215073777183483e-17
+  }
+]
