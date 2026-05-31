@@ -1,0 +1,80 @@
+# Database Dispatcher Configuration File
+# Copy this to db_dispatcher.conf and edit accordingly
+
+[master]
+# Master database configuration (Beijing region)
+ip = 10.0.0.1
+port = 3306
+user = root
+password = master_password
+region = beijing
+
+[slave]
+# Slave database 1 (Shanghai region)
+ip = 10.0.1.2
+port = 3306
+user = root
+password = slave_password
+region = shanghai
+weight = 100
+
+[slave]
+# Slave database 2 (Shenzhen region)
+ip = 10.0.2.2
+port = 3306
+user = root
+password = slave_password
+region = shenzhen
+weight = 80
+
+[slave]
+# Slave database 3 (Chengdu region)
+ip = 10.0.3.2
+port = 3306
+user = root
+password = slave_password
+region = chengdu
+weight = 60
+
+# Auto-Recovery Feature:
+# Enable with --auto-recovery command line option
+#
+# Recovery conditions:
+#   - Seconds_Behind_Master < 10 seconds
+#   - Slave_IO_Running = Yes
+#   - Slave_SQL_Running = Yes
+#   - 3 consecutive successful checks (9 seconds total)
+#
+# Slow-start strategy:
+#   - Initial weight: 50% of original
+#   - Full weight after: 5 minutes
+#
+# Logs will show recovery events and progress
+
+# Predictive Adaptive Load Balancing:
+# Enable with --adaptive-lb command line option
+#
+# Metrics collected every 5 seconds:
+#   - QPS (Queries Per Second)
+#   - CPU usage (%)
+#   - IO wait (%)
+#   - Replication lag (seconds)
+#
+# Prediction horizon: 30 seconds
+# Prediction model: ARIMA (simplified)
+# Model retraining: every 10 minutes
+#
+# Weight adjustment triggers:
+#   - Predicted CPU > 80% or replication lag approaching threshold: decrease weight by 20%
+#   - Current CPU < 50% and weight below original: increase weight by 10%
+#
+# Minimum weight protection: 20% of original (prevents extreme traffic shift)
+#
+# Dry-run mode (--dry-run):
+#   - Evaluate predictions without actually adjusting weights
+#   - Log all would-be weight changes
+
+# Health Check Configuration:
+# Check interval: 3 seconds
+# Maximum replication lag: 60 seconds (beyond this, slave is removed)
+# Recovery lag threshold: 10 seconds
