@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>授权策略管理</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fa; color: #333; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+  h1 { font-size: 22px; margin-bottom: 20px; color: #1a73e8; }
+  .status-bar { display: flex; gap: 16px; padding: 12px 20px; background: #fff; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .status-bar .item { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .status-bar .label { color: #57606a; }
+  .status-bar .value { font-weight: 600; }
+  .status-bar .enabled { color: #28a745; }
+  .status-bar .disabled { color: #6c757d; }
+  .tabs { display: flex; border-bottom: 2px solid #eaecef; margin-bottom: 16px; }
+  .tab { padding: 10px 20px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; font-size: 14px; }
+  .tab.active { border-bottom-color: #1a73e8; color: #1a73e8; font-weight: 600; }
+  .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px; overflow: hidden; }
+  .card-header { padding: 14px 20px; border-bottom: 1px solid #eaecef; font-weight: 600; background: #f8f9fa; display: flex; justify-content: space-between; align-items: center; }
+  .card-body { padding: 20px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #eee; font-size: 13px; }
+  th { background: #f8f9fa; font-weight: 600; color: #57606a; }
+  tr:hover { background: #f8f9fa; }
+  .btn { padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  .btn-primary { background: #1a73e8; color: #fff; }
+  .btn-primary:hover { background: #1557b0; }
+  .btn-secondary { background: #6c757d; color: #fff; }
+  .btn-secondary:hover { background: #5a6268; }
+  .btn-danger { background: #dc3545; color: #fff; }
+  .btn-danger:hover { background: #c82333; }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+  .badge-allow { background: #d4edda; color: #155724; }
+  .badge-deny { background: #f8d7da; color: #721c24; }
+  .badge-enabled { background: #d1ecf1; color: #0c5460; }
+  .badge-disabled { background: #e2e3e5; color: #383d41; }
+  .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+  .modal { background: #fff; border-radius: 8px; width: 600px; max-height: 80vh; overflow-y: auto; }
+  .modal-header { padding: 14px 20px; border-bottom: 1px solid #eaecef; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+  .modal-body { padding: 20px; }
+  .modal-footer { padding: 14px 20px; border-top: 1px solid #eaecef; display: flex; justify-content: flex-end; gap: 10px; }
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #333; }
+  .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 13px; }
+  .form-group textarea { min-height: 80px; resize: vertical; }
+  .form-row { display: flex; gap: 12px; }
+  .form-row .form-group { flex: 1; }
+  .empty { text-align: center; padding: 40px; color: #6a737d; }
+  .close-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #6c757d; }
+  .trace-id { font-family: "SF Mono", Monaco, monospace; font-size: 11px; color: #1a73e8; }
+  .action-btns { display: flex; gap: 6px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+
+const API_BASE = '';
+
+function StatusBar({ status }) {
+  return (
+    <div className="status-bar">
+      <div className="item">
+        <span className="label">授权状态:</span>
+        <span className={`value ${status.enabled ? 'enabled' : 'disabled'}`}>
+          {status.enabled ? '已启用' : '已禁用'}
+        </span>
+      </div>
+      <div className="item">
+        <span className="label">服务ID:</span>
+        <span className="value">{status.service_id || '-'}</span>
+      </div>
+      <div className="item">
+        <span className="label">策略数量:</span>
+        <span className="value">{status.policies || 0}</span>
+      </div>
+    </div>
+  );
+}
+
+function PolicyTable({ policies, onEdit, onDelete, onToggle }) {
+  if (!policies || policies.length === 0) {
+    return <div className="empty">暂无策略</div>;
+  }
+
+  return (
+    <table>
+      <thead>
+        <tr>
+          <th>名称</th>
+          <th>来源(SVID)</th>
+          <th>目标</th>
+          <th>方法</th>
+          <th>路径</th>
+          <th>效果</th>
+          <th>优先级</th>
+          <th>状态</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {policies.map(p => (
+          <tr key={p.id}>
+            <td>{p.name}</td>
+            <td><span className="trace-id">{p.source}</span></td>
+            <td>{p.target}</td>
+            <td>{p.method}</td>
+            <td style={{maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{p.path_pattern}</td>
+            <td>
+              <span className={`badge ${p.effect === 'allow' ? 'badge-allow' : 'badge-deny'}`}>
+                {p.effect}
+              </span>
+            </td>
+            <td>{p.priority}</td>
+            <td>
+              <span className={`badge ${p.enabled ? 'badge-enabled' : 'badge-disabled'}`}>
+                {p.enabled ? '启用' : '禁用'}
+              </span>
+            </td>
+            <td>
+              <div className="action-btns">
+                <button className="btn btn-secondary btn-sm" onClick={() => onEdit(p)}>编辑</button>
+                <button className="btn btn-sm" style={{background: p.enabled ? '#6c757d' : '#28a745', color: '#fff'}} onClick={() => onToggle(p)}>
+                  {p.enabled ? '禁用' : '启用'}
+                </button>
+                <button className="btn btn-danger btn-sm" onClick={() => onDelete(p)}>删除</button>
+              </div>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function PolicyModal({ policy, onSave, onClose }) {
+  const [form, setForm] = useState({
+    name: policy?.name || '',
+    description: policy?.description || '',
+    source: policy?.source || '*',
+    source_type: policy?.source_type || 'svid',
+    target: policy?.target || '*',
+    target_type: policy?.target_type || 'service',
+    method: policy?.method || '*',
+    path_pattern: policy?.path_pattern || '*',
+    effect: policy?.effect || 'allow',
+    priority: policy?.priority || 100,
+    enabled: policy?.enabled ?? true,
+  });
+
+  const handleChange = (field, value) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = () => {
+    if (!form.name.trim()) {
+      alert('请输入策略名称');
+      return;
+    }
+    onSave(form);
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal">
+        <div className="modal-header">
+          <span>{policy ? '编辑策略' : '新建策略'}</span>
+          <button className="close-btn" onClick={onClose}>×</button>
+        </div>
+        <div className="modal-body">
+          <div className="form-group">
+            <label>策略名称 *</label>
+            <input type="text" value={form.name} onChange={e => handleChange('name', e.target.value)} placeholder="如: 允许服务A调用用户API" />
+          </div>
+          <div className="form-group">
+            <label>描述</label>
+            <textarea value={form.description} onChange={e => handleChange('description', e.target.value)} placeholder="策略描述" />
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>来源 SVID</label>
+              <input type="text" value={form.source} onChange={e => handleChange('source', e.target.value)} placeholder="spiffe://example.org/service-a 或 *" />
+            </div>
+            <div className="form-group">
+              <label>目标服务</label>
+              <input type="text" value={form.target} onChange={e => handleChange('target', e.target.value)} placeholder="msgbridge 或 *" />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>HTTP 方法</label>
+              <select value={form.method} onChange={e => handleChange('method', e.target.value)}>
+                <option value="*">所有方法 (*)</option>
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="DELETE">DELETE</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>路径模式</label>
+              <input type="text" value={form.path_pattern} onChange={e => handleChange('path_pattern', e.target.value)} placeholder="/api/v1/users 或 /api/v1/*" />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>效果</label>
+              <select value={form.effect} onChange={e => handleChange('effect', e.target.value)}>
+                <option value="allow">允许 (allow)</option>
+                <option value="deny">拒绝 (deny)</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>优先级</label>
+              <input type="number" value={form.priority} onChange={e => handleChange('priority', parseInt(e.target.value) || 0)} placeholder="100" />
+            </div>
+          </div>
+          <div className="form-group">
+            <label>
+              <input type="checkbox" checked={form.enabled} onChange={e => handleChange('enabled', e.target.checked)} style={{marginRight: '8px'}} />
+              启用策略
+            </label>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>取消</button>
+          <button className="btn btn-primary" onClick={handleSubmit}>保存</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AuditLogTable({ logs }) {
+  if (!logs || logs.length === 0) {
+    return <div className="empty">暂无审计日志</div>;
+  }
+
+  return (
+    <table>
+      <thead>
+        <tr>
+          <th>时间</th>
+          <th>操作</th>
+          <th>策略ID</th>
+          <th>操作者</th>
+          <th>IP</th>
+        </tr>
+      </thead>
+      <tbody>
+        {logs.map(log => (
+          <tr key={log.id}>
+            <td>{new Date(log.timestamp).toLocaleString()}</td>
+            <td>
+              <span className={`badge ${log.action === 'delete' ? 'badge-deny' : 'badge-allow'}`}>
+                {log.action}
+              </span>
+            </td>
+            <td><span className="trace-id">{log.policy_id.substring(0, 8)}...</span></td>
+            <td>{log.operator}</td>
+            <td>{log.ip || '-'}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function App() {
+  const [activeTab, setActiveTab] = useState('policies');
+  const [status, setStatus] = useState({});
+  const [policies, setPolicies] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [editingPolicy, setEditingPolicy] = useState(null);
+
+  const fetchStatus = useCallback(async () => {
+    try {
+      const resp = await fetch(`${API_BASE}/api/v1/admin/authz/status`);
+      const data = await resp.json();
+      setStatus(data);
+    } catch (e) {
+      console.error('Fetch status failed:', e);
+    }
+  }, []);
+
+  const fetchPolicies = useCallback(async () => {
+    try {
+      const resp = await fetch(`${API_BASE}/api/v1/admin/authz/policies`);
+      const data = await resp.json();
+      setPolicies(data.items || []);
+    } catch (e) {
+      console.error('Fetch policies failed:', e);
+    }
+  }, []);
+
+  const fetchAuditLogs = useCallback(async () => {
+    try {
+      const resp = await fetch(`${API_BASE}/api/v1/admin/authz/audit?limit=50`);
+      const data = await resp.json();
+      setAuditLogs(data.items || []);
+    } catch (e) {
+      console.error('Fetch audit logs failed:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStatus();
+    fetchPolicies();
+    fetchAuditLogs();
+    const interval = setInterval(fetchStatus, 5000);
+    return () => clearInterval(interval);
+  }, [fetchStatus, fetchPolicies, fetchAuditLogs]);
+
+  const handleCreate = () => {
+    setEditingPolicy(null);
+    setShowModal(true);
+  };
+
+  const handleEdit = (policy) => {
+    setEditingPolicy(policy);
+    setShowModal(true);
+  };
+
+  const handleToggle = async (policy) => {
+    const updated = { ...policy, enabled: !policy.enabled };
+    try {
+      const resp = await fetch(`${API_BASE}/api/v1/admin/authz/policies/update?id=${policy.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      });
+      if (resp.ok) {
+        fetchPolicies();
+        fetchAuditLogs();
+      }
+    } catch (e) {
+      alert('操作失败: ' + e.message);
+    }
+  };
+
+  const handleDelete = async (policy) => {
+    if (!confirm(`确认删除策略 "${policy.name}"?`)) return;
+    try {
+      const resp = await fetch(`${API_BASE}/api/v1/admin/authz/policies/delete?id=${policy.id}`, { method: 'POST' });
+      if (resp.ok) {
+        fetchPolicies();
+        fetchAuditLogs();
+      }
+    } catch (e) {
+      alert('删除失败: ' + e.message);
+    }
+  };
+
+  const handleSave = async (form) => {
+    const url = editingPolicy
+      ? `${API_BASE}/api/v1/admin/authz/policies/update?id=${editingPolicy.id}`
+      : `${API_BASE}/api/v1/admin/authz/policies/create`;
+
+    try {
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      if (resp.ok) {
+        setShowModal(false);
+        fetchPolicies();
+        fetchAuditLogs();
+        fetchStatus();
+      } else {
+        const err = await resp.json();
+        alert('保存失败: ' + (err.error || 'unknown'));
+      }
+    } catch (e) {
+      alert('保存失败: ' + e.message);
+    }
+  };
+
+  return (
+    <div className="container">
+      <h1>授权策略管理</h1>
+
+      <StatusBar status={status} />
+
+      <div className="tabs">
+        <div className={`tab ${activeTab === 'policies' ? 'active' : ''}`} onClick={() => setActiveTab('policies')}>
+          策略列表 ({policies.length})
+        </div>
+        <div className={`tab ${activeTab === 'audit' ? 'active' : ''}`} onClick={() => { setActiveTab('audit'); fetchAuditLogs(); }}>
+          审计日志
+        </div>
+      </div>
+
+      {activeTab === 'policies' && (
+        <div className="card">
+          <div className="card-header">
+            <span>授权策略</span>
+            <button className="btn btn-primary" onClick={handleCreate}>+ 新建策略</button>
+          </div>
+          <div className="card-body">
+            <PolicyTable policies={policies} onEdit={handleEdit} onDelete={handleDelete} onToggle={handleToggle} />
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'audit' && (
+        <div className="card">
+          <div className="card-header">
+            <span>策略变更审计日志</span>
+            <button className="btn btn-secondary btn-sm" onClick={fetchAuditLogs}>刷新</button>
+          </div>
+          <div className="card-body">
+            <AuditLogTable logs={auditLogs} />
+          </div>
+        </div>
+      )}
+
+      {showModal && (
+        <PolicyModal policy={editingPolicy} onSave={handleSave} onClose={() => setShowModal(false)} />
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

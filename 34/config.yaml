@@ -1,0 +1,95 @@
+app:
+  name: msgbridge
+  log_level: info
+
+nats:
+  url: nats://127.0.0.1:4222
+  subject_prefix: bridge
+
+rocketmq:
+  name_server: 127.0.0.1:9876
+  access_key: ""
+  secret_key: ""
+  namespace: ""
+  instance_id: ""
+  group: GID_BRIDGE
+  topics:
+    - topic-a
+
+tdmq:
+  endpoints: 127.0.0.1:6650
+  auth_token: ""
+  cluster: "pulsar-cluster"
+  tenant: "public"
+  namespace: "default"
+  subscription: "bridge-sub"
+  topics:
+    - topic-b
+  rate_limit_per_sec: 100
+  rate_limit_window_ms: 1000
+  backoff_initial_ms: 1000
+  backoff_max_ms: 60000
+
+mappings:
+  - source: "rocketmq"
+    source_topic: "topic-a"
+    target: "tdmq"
+    target_topic: "topic-b"
+    source_format: "json"
+    target_format: "avro"
+    target_schema: |
+      {
+        "type": "record",
+        "name": "Event",
+        "fields": [
+          {"name": "id", "type": "string"},
+          {"name": "payload", "type": "string"},
+          {"name": "ts", "type": "long"}
+        ]
+      }
+  - source: "tdmq"
+    source_topic: "topic-b"
+    target: "rocketmq"
+    target_topic: "topic-a"
+    source_format: "avro"
+    target_format: "json"
+    source_schema: |
+      {
+        "type": "record",
+        "name": "Event",
+        "fields": [
+          {"name": "id", "type": "string"},
+          {"name": "payload", "type": "string"},
+          {"name": "ts", "type": "long"}
+        ]
+      }
+
+kafka:
+  brokers:
+    - 127.0.0.1:9092
+  dlq_topic: bridge-dlq
+  consumer_group: bridge-dlq-retry
+
+retry:
+  max_attempts: 5
+  backoff_base_ms: 1000
+  backoff_max_ms: 60000
+
+http:
+  addr: ":8080"
+
+tracing:
+  enabled: true
+  jaeger_url: "http://127.0.0.1:14268/api/traces"
+  service_name: "msgbridge"
+  sample_rate: 1.0
+
+svid:
+  enabled: false
+  audience: "msgbridge"
+  issuer: "https://auth.example.com"
+  jwks_url: "https://auth.example.com/.well-known/jwks.json"
+
+etcd:
+  endpoints:
+    - "127.0.0.1:2379"

@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>消息桥接服务 - 链路追踪</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fa; color: #333; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+  h1 { font-size: 22px; margin-bottom: 20px; color: #1a73e8; }
+  .toolbar { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+  .toolbar input, .toolbar select, .toolbar button {
+    padding: 8px 14px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 14px;
+  }
+  .toolbar input[type="text"] { flex: 1; min-width: 240px; }
+  .toolbar input[type="datetime-local"] { min-width: 200px; }
+  .toolbar button { background: #1a73e8; color: #fff; cursor: pointer; border: none; }
+  .toolbar button:hover { background: #1557b0; }
+  .toolbar button.secondary { background: #6c757d; }
+  .toolbar button.secondary:hover { background: #5a6268; }
+  .toolbar label { font-size: 13px; color: #57606a; }
+  .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px; overflow: hidden; }
+  .card-header { padding: 14px 20px; border-bottom: 1px solid #eaecef; font-weight: 600; background: #f8f9fa; }
+  .card-body { padding: 20px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #eee; font-size: 13px; }
+  th { background: #f8f9fa; font-weight: 600; color: #57606a; cursor: pointer; user-select: none; }
+  th:hover { background: #eaecef; }
+  tr:hover { background: #f8f9fa; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+  .badge-success { background: #d4edda; color: #155724; }
+  .badge-error { background: #f8d7da; color: #721c24; }
+  .badge-dlq { background: #fff3cd; color: #856404; }
+  .badge-info { background: #d1ecf1; color: #0c5460; }
+  .trace-id { font-family: "SF Mono", Monaco, monospace; font-size: 12px; color: #1a73e8; cursor: pointer; }
+  .trace-id:hover { text-decoration: underline; }
+  .timeline { position: relative; padding-left: 24px; }
+  .timeline::before { content: ''; position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: #d0d7de; }
+  .timeline-item { position: relative; padding: 10px 0 16px 0; }
+  .timeline-item::before { content: ''; position: absolute; left: -20px; top: 14px; width: 10px; height: 10px; border-radius: 50%; background: #1a73e8; border: 2px solid #fff; box-shadow: 0 0 0 2px #1a73e8; }
+  .timeline-item.error::before { background: #d73a49; box-shadow: 0 0 0 2px #d73a49; }
+  .timeline-item.dlq::before { background: #e0a800; box-shadow: 0 0 0 2px #e0a800; }
+  .timeline-time { font-size: 12px; color: #6a737d; font-family: monospace; }
+  .timeline-title { font-weight: 600; margin: 2px 0; }
+  .timeline-detail { font-size: 12px; color: #57606a; }
+  .timeline-detail .kv { margin-right: 16px; }
+  .detail-panel { background: #f8f9fa; border-radius: 6px; padding: 12px; margin-top: 8px; }
+  .detail-panel pre { font-size: 12px; white-space: pre-wrap; word-break: break-all; }
+  .empty { text-align: center; padding: 40px; color: #6a737d; }
+  .tabs { display: flex; border-bottom: 2px solid #eaecef; margin-bottom: 16px; }
+  .tab { padding: 10px 20px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; font-size: 14px; }
+  .tab.active { border-bottom-color: #1a73e8; color: #1a73e8; font-weight: 600; }
+  .pager { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; background: #f8f9fa; }
+  .pager button { padding: 6px 12px; border: 1px solid #d0d7de; background: #fff; border-radius: 4px; cursor: pointer; }
+  .pager button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .status-summary { display: flex; gap: 20px; padding: 12px 20px; background: #f8f9fa; }
+  .status-summary .stat { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .status-summary .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .filter-row { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; padding: 12px; background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .filter-row label { font-size: 13px; color: #57606a; white-space: nowrap; }
+  .health-panel { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 16px; padding: 12px 20px; display: flex; gap: 24px; align-items: center; }
+  .health-panel .health-item { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .health-panel .health-item .label { color: #57606a; }
+  .health-panel .health-item .value { font-weight: 600; font-family: monospace; }
+  .health-panel .backoff-active { color: #d73a49; }
+  .health-panel .backoff-idle { color: #28a745; }
+  .health-panel .warn { color: #e0a800; }
+  .health-panel .divider { width: 1px; height: 24px; background: #eaecef; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>消息桥接服务 - 链路追踪</h1>
+
+  <div class="toolbar">
+    <input type="text" id="traceInput" placeholder="输入 trace_id 查询消息完整生命周期..." />
+    <button onclick="searchTrace()">查询</button>
+    <button class="secondary" onclick="listTraces()">最近消息</button>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" id="tabTrace" onclick="switchTab('trace')">链路详情</div>
+    <div class="tab" id="tabList" onclick="switchTab('list')">消息列表</div>
+    <div class="tab" id="tabDLQ" onclick="switchTab('dlq')">死信队列</div>
+  </div>
+
+  <div class="health-panel" id="healthPanel">
+    <span class="health-item"><span class="label">TDMQ 退避:</span> <span id="tdmqBackoff" class="value backoff-idle">未激活</span></span>
+    <div class="divider"></div>
+    <span class="health-item"><span class="label">退避次数:</span> <span id="tdmqAttempts" class="value">0</span></span>
+    <span class="health-item"><span class="label">下次等待:</span> <span id="tdmqNextWait" class="value">0ms</span></span>
+    <div class="divider"></div>
+    <span class="health-item"><span class="label">限流次数:</span> <span id="tdmqRateLimited" class="value">0</span></span>
+    <span class="health-item"><span class="label">成功:</span> <span id="tdmqSuccess" class="value" style="color:#28a745">0</span></span>
+    <span class="health-item"><span class="label">失败:</span> <span id="tdmqFail" class="value" style="color:#d73a49">0</span></span>
+  </div>
+
+  <div id="tabTraceContent">
+    <div id="lifecycleResult"></div>
+  </div>
+
+  <div id="tabListContent" style="display:none">
+    <div class="filter-row">
+      <label>状态:</label>
+      <select id="statusFilter" onchange="applyFilter()">
+        <option value="">全部</option>
+        <option value="success">成功</option>
+        <option value="error">失败</option>
+        <option value="dlq">死信</option>
+      </select>
+      <label>开始时间:</label>
+      <input type="datetime-local" id="startTime" />
+      <label>结束时间:</label>
+      <input type="datetime-local" id="endTime" />
+      <button class="secondary" onclick="clearFilter()">清除</button>
+    </div>
+    <div id="traceListResult"></div>
+  </div>
+
+  <div id="tabDLQContent" style="display:none">
+    <div id="dlqResult"></div>
+  </div>
+</div>
+
+<script>
+const API_BASE = '';
+let allTraces = [];
+let sortAsc = { created_at: false, updated_at: false, status: false, events: false };
+
+function switchTab(tab) {
+  ['Trace','List','DLQ'].forEach(t => {
+    document.getElementById('tab' + t).classList.remove('active');
+    document.getElementById('tab' + t + 'Content').style.display = 'none';
+  });
+  document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+  document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1) + 'Content').style.display = 'block';
+}
+
+async function searchTrace() {
+  const traceId = document.getElementById('traceInput').value.trim();
+  if (!traceId) { alert('请输入 trace_id'); return; }
+  switchTab('trace');
+  await showLifecycle(traceId);
+}
+
+async function showLifecycle(traceId) {
+  const el = document.getElementById('lifecycleResult');
+  el.innerHTML = '<div class="empty">加载中...</div>';
+  try {
+    const resp = await fetch(`${API_BASE}/api/v1/traces/lifecycle?trace_id=${encodeURIComponent(traceId)}`);
+    if (resp.status === 404) {
+      el.innerHTML = '<div class="empty">未找到 trace_id: ' + traceId + '</div>';
+      return;
+    }
+    const data = await resp.json();
+    renderLifecycle(data);
+  } catch (e) {
+    el.innerHTML = '<div class="empty">请求失败: ' + e.message + '</div>';
+  }
+}
+
+function renderLifecycle(data) {
+  const el = document.getElementById('lifecycleResult');
+  const statusBadge = badgeClass(data.status);
+
+  let html = `
+    <div class="card">
+      <div class="card-header">
+        链路详情
+        <span class="badge ${statusBadge}" style="margin-left:12px">${data.status || 'unknown'}</span>
+      </div>
+      <div class="card-body">
+        <div style="margin-bottom:16px;font-size:13px;color:#57606a">
+          <span class="kv">Trace ID:</span> <code style="background:#f1f3f5;padding:2px 8px;border-radius:4px">${data.trace_id}</code>
+          <span class="kv" style="margin-left:24px">创建时间:</span> ${new Date(data.created_at).toLocaleString()}
+          <span class="kv" style="margin-left:24px">最后更新:</span> ${new Date(data.updated_at).toLocaleString()}
+        </div>
+        <div class="timeline">
+  `;
+
+  data.events.forEach(ev => {
+    const cls = ev.status === 'error' ? 'error' : (ev.status === 'dlq' ? 'dlq' : '');
+    const timeStr = new Date(ev.timestamp).toLocaleTimeString() + '.' + String(new Date(ev.timestamp).getMilliseconds()).padStart(3, '0');
+    html += `
+      <div class="timeline-item ${cls}">
+        <div class="timeline-time">${timeStr}</div>
+        <div class="timeline-title">
+          ${ev.source}/${ev.source_topic} → ${ev.target}/${ev.target_topic}
+          <span class="badge ${badgeClass(ev.status)}" style="margin-left:8px">${ev.status}</span>
+        </div>
+        <div class="timeline-detail">
+          <span class="kv">格式: ${ev.format || '-'}</span>
+          <span class="kv">耗时: ${ev.duration_ms}ms</span>
+          <span class="kv">大小: ${ev.payload_size}B</span>
+          ${ev.error ? '<span class="kv" style="color:#d73a49">错误: ' + escapeHtml(ev.error) + '</span>' : ''}
+        </div>
+        ${ev.headers ? '<div class="detail-panel"><strong>Headers:</strong><pre>' + JSON.stringify(ev.headers, null, 2) + '</pre></div>' : ''}
+      </div>
+    `;
+  });
+
+  html += '</div></div></div>';
+  el.innerHTML = html;
+}
+
+async function listTraces() {
+  switchTab('list');
+  const el = document.getElementById('traceListResult');
+  el.innerHTML = '<div class="empty">加载中...</div>';
+  try {
+    const resp = await fetch(`${API_BASE}/api/v1/traces?limit=100`);
+    const data = await resp.json();
+    allTraces = data.items || [];
+    applyFilter();
+  } catch (e) {
+    el.innerHTML = '<div class="empty">请求失败: ' + e.message + '</div>';
+  }
+}
+
+async function pollStatus() {
+  try {
+    const resp = await fetch(`${API_BASE}/api/v1/status`);
+    const data = await resp.json();
+    updateHealthPanel(data);
+  } catch (e) {
+    // ignore
+  }
+}
+
+function updateHealthPanel(data) {
+  if (!data.tdmq) return;
+  const t = data.tdmq;
+
+  const backoffEl = document.getElementById('tdmqBackoff');
+  if (t.backoff_active) {
+    backoffEl.textContent = '已激活';
+    backoffEl.className = 'value backoff-active';
+  } else {
+    backoffEl.textContent = '未激活';
+    backoffEl.className = 'value backoff-idle';
+  }
+  document.getElementById('tdmqAttempts').textContent = t.backoff_attempts;
+  document.getElementById('tdmqNextWait').textContent = t.backoff_next_wait_ms + 'ms';
+  document.getElementById('tdmqRateLimited').textContent = t.rate_limited_count;
+  document.getElementById('tdmqSuccess').textContent = t.success_count;
+  document.getElementById('tdmqFail').textContent = t.fail_count;
+}
+
+function applyFilter() {
+  const status = document.getElementById('statusFilter').value;
+  const startStr = document.getElementById('startTime').value;
+  const endStr = document.getElementById('endTime').value;
+
+  let filtered = allTraces.slice();
+
+  if (status) {
+    filtered = filtered.filter(item => item.status === status);
+  }
+  if (startStr) {
+    const start = new Date(startStr).getTime();
+    filtered = filtered.filter(item => new Date(item.created_at).getTime() >= start);
+  }
+  if (endStr) {
+    const end = new Date(endStr).getTime();
+    filtered = filtered.filter(item => new Date(item.created_at).getTime() <= end);
+  }
+
+  renderTraceList(filtered);
+}
+
+function clearFilter() {
+  document.getElementById('statusFilter').value = '';
+  document.getElementById('startTime').value = '';
+  document.getElementById('endTime').value = '';
+  applyFilter();
+}
+
+function sortBy(field) {
+  sortAsc[field] = !sortAsc[field];
+  const filtered = getFilteredTraces();
+  filtered.sort((a, b) => {
+    let va, vb;
+    if (field === 'events') {
+      va = a.events.length;
+      vb = b.events.length;
+    } else if (field === 'status') {
+      va = a.status || '';
+      vb = b.status || '';
+    } else {
+      va = new Date(a[field]).getTime();
+      vb = new Date(b[field]).getTime();
+    }
+    if (va < vb) return sortAsc[field] ? -1 : 1;
+    if (va > vb) return sortAsc[field] ? 1 : -1;
+    return 0;
+  });
+  renderTraceList(filtered);
+}
+
+function getFilteredTraces() {
+  const status = document.getElementById('statusFilter').value;
+  const startStr = document.getElementById('startTime').value;
+  const endStr = document.getElementById('endTime').value;
+
+  let filtered = allTraces.slice();
+  if (status) filtered = filtered.filter(item => item.status === status);
+  if (startStr) {
+    const start = new Date(startStr).getTime();
+    filtered = filtered.filter(item => new Date(item.created_at).getTime() >= start);
+  }
+  if (endStr) {
+    const end = new Date(endStr).getTime();
+    filtered = filtered.filter(item => new Date(item.created_at).getTime() <= end);
+  }
+  return filtered;
+}
+
+function renderTraceList(items) {
+  const el = document.getElementById('traceListResult');
+  if (!items || items.length === 0) {
+    el.innerHTML = '<div class="empty">暂无数据</div>';
+    return;
+  }
+  const summary = computeSummary(items);
+  let html = `<div class="status-summary">
+    <span class="stat"><span class="dot" style="background:#155724"></span>成功: ${summary.success}</span>
+    <span class="stat"><span class="dot" style="background:#d73a49"></span>失败: ${summary.error}</span>
+    <span class="stat"><span class="dot" style="background:#e0a800"></span>死信: ${summary.dlq}</span>
+    <span class="stat"><span class="dot" style="background:#6c757d"></span>总计: ${items.length}</span>
+  </div>`;
+  html += '<div class="card"><table><thead><tr>';
+  html += '<th onclick="sortBy(\'created_at\')">创建时间 ' + (sortAsc.created_at ? '↑' : '↓') + '</th>';
+  html += '<th>Trace ID</th>';
+  html += '<th onclick="sortBy(\'status\')">状态 ' + (sortAsc.status ? '↑' : '↓') + '</th>';
+  html += '<th onclick="sortBy(\'events\')">事件数 ' + (sortAsc.events ? '↑' : '↓') + '</th>';
+  html += '<th onclick="sortBy(\'updated_at\')">最后更新 ' + (sortAsc.updated_at ? '↑' : '↓') + '</th>';
+  html += '</tr></thead><tbody>';
+  items.forEach(item => {
+    html += `<tr>
+      <td>${new Date(item.created_at).toLocaleString()}</td>
+      <td><span class="trace-id" onclick="showLifecycle('${item.trace_id}')">${item.trace_id}</span></td>
+      <td><span class="badge ${badgeClass(item.status)}">${item.status || 'unknown'}</span></td>
+      <td>${item.events.length}</td>
+      <td>${new Date(item.updated_at).toLocaleString()}</td>
+    </tr>`;
+  });
+  html += '</tbody></table></div>';
+  el.innerHTML = html;
+}
+
+function computeSummary(items) {
+  const summary = { success: 0, error: 0, dlq: 0 };
+  items.forEach(item => {
+    if (item.status === 'success') summary.success++;
+    else if (item.status === 'error') summary.error++;
+    else if (item.status === 'dlq') summary.dlq++;
+  });
+  return summary;
+}
+
+async function listDLQ() {
+  switchTab('dlq');
+  const el = document.getElementById('dlqResult');
+  el.innerHTML = '<div class="empty">加载中...</div>';
+  try {
+    const resp = await fetch(`${API_BASE}/api/v1/dlq?limit=100`);
+    const data = await resp.json();
+    renderDLQ(data);
+  } catch (e) {
+    el.innerHTML = '<div class="empty">请求失败: ' + e.message + '</div>';
+  }
+}
+
+function renderDLQ(data) {
+  const el = document.getElementById('dlqResult');
+  if (!data.items || data.items.length === 0) {
+    el.innerHTML = '<div class="empty">暂无死信消息</div>';
+    return;
+  }
+  let html = '<div class="card"><table><thead><tr><th>ID</th><th>来源</th><th>目标</th><th>错误</th><th>重试</th><th>时间</th><th>操作</th></tr></thead><tbody>';
+  data.items.forEach(item => {
+    html += `<tr>
+      <td><code style="font-size:11px">${item.id.substring(0,8)}...</code></td>
+      <td>${item.source}/${item.source_topic}</td>
+      <td>${item.target}/${item.target_topic}</td>
+      <td style="color:#d73a49;font-size:12px">${escapeHtml(item.error.substring(0,60))}...</td>
+      <td>${item.attempts}</td>
+      <td>${new Date(item.created_at).toLocaleString()}</td>
+      <td><button onclick="replayDLQ('${item.id}')">重放</button></td>
+    </tr>`;
+  });
+  html += '</tbody></table></div>';
+  el.innerHTML = html;
+}
+
+async function replayDLQ(id) {
+  if (!confirm('确认重放消息 ' + id + '?')) return;
+  try {
+    const resp = await fetch(`${API_BASE}/api/v1/dlq/replay`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message_id: id })
+    });
+    const data = await resp.json();
+    if (data.status === 'ok') {
+      alert('重放请求已提交');
+      listDLQ();
+    } else {
+      alert('重放失败: ' + (data.error || 'unknown'));
+    }
+  } catch (e) {
+    alert('请求失败: ' + e.message);
+  }
+}
+
+function badgeClass(status) {
+  switch (status) {
+    case 'success': return 'badge-success';
+    case 'error': return 'badge-error';
+    case 'dlq': return 'badge-dlq';
+    default: return 'badge-info';
+  }
+}
+
+function escapeHtml(s) {
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+listTraces();
+pollStatus();
+setInterval(pollStatus, 2000);
+</script>
+</body>
+</html>
