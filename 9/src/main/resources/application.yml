@@ -1,0 +1,104 @@
+server:
+  port: 8088
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: mq-dql-admin
+  profiles:
+    active: h2
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+    connection-timeout: 15000
+    publisher-confirms: true
+    publisher-returns: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        concurrency: 3
+        max-concurrency: 10
+        prefetch: 10
+        retry:
+          enabled: true
+          initial-interval: 1000
+          max-attempts: 3
+          max-interval: 10000
+          multiplier: 2.0
+      direct:
+        acknowledge-mode: manual
+
+  datasource:
+    url: jdbc:h2:mem:dqldb;DB_CLOSE_DELAY=-1;MODE=MySQL
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
+
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    default-property-inclusion: non_null
+
+mq:
+  dql:
+    default-retry-count: 3
+    retry-interval: 5000
+    archive-enabled: true
+    archive-threshold-days: 7
+    batch-size: 100
+    clean-enabled: true
+    failed-clean-threshold-days: 30
+    success-clean-threshold-days: 7
+    dead-letter-clean-threshold-days: 15
+    auto-archive-before-clean: true
+  queue:
+    auto-config: true
+
+logging:
+  level:
+    root: INFO
+    com.dql.mq: DEBUG
+    org.springframework.amqp: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,beans,env
+
+---
+spring:
+  config:
+    activate:
+      on-profile: mysql
+  datasource:
+    url: jdbc:mysql://localhost:3306/dql_admin?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
