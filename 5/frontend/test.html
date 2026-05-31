@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>性能监控测试页面</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; color: #333; padding: 40px; }
+    .container { max-width: 800px; margin: 0 auto; }
+    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; margin-bottom: 30px; }
+    .header h1 { font-size: 24px; margin-bottom: 10px; }
+    .header p { opacity: 0.9; font-size: 14px; }
+    .card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    .card h2 { font-size: 16px; margin-bottom: 16px; color: #333; border-bottom: 2px solid #667eea; padding-bottom: 8px; }
+    .btn-group { display: flex; flex-wrap: wrap; gap: 10px; }
+    .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.3s; }
+    .btn-primary { background: #667eea; color: white; }
+    .btn-primary:hover { background: #5568d3; }
+    .btn-danger { background: #f44336; color: white; }
+    .btn-danger:hover { background: #d32f2f; }
+    .btn-warning { background: #ff9800; color: white; }
+    .btn-warning:hover { background: #f57c00; }
+    .btn-info { background: #2196f3; color: white; }
+    .btn-info:hover { background: #1976d2; }
+    .test-area { min-height: 200px; border: 2px dashed #ddd; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #999; }
+    .metrics-display { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .metric-item { text-align: center; padding: 12px; background: #f5f7fa; border-radius: 8px; }
+    .metric-label { font-size: 12px; color: #666; margin-bottom: 4px; }
+    .metric-value { font-size: 18px; font-weight: 600; color: #333; }
+    .log-area { background: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 12px; max-height: 200px; overflow-y: auto; }
+    .log-item { margin-bottom: 4px; }
+    .log-time { color: #888; }
+    .log-error { color: #f44336; }
+    .log-success { color: #4caf50; }
+    .log-info { color: #2196f3; }
+    .nav { margin-bottom: 20px; }
+    .nav a { color: #667eea; text-decoration: none; margin-right: 20px; font-size: 14px; }
+    .nav a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="nav">
+      <a href="index.html">← 返回仪表盘</a>
+    </div>
+
+    <div class="header">
+      <h1>🧪 性能监控测试页面</h1>
+      <p>用于测试前端性能监控系统的各项功能</p>
+    </div>
+
+    <div class="card">
+      <h2>📊 性能指标测试</h2>
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="reloadPage()">重新加载页面 (采集FP/FCP/LCP)</button>
+        <button class="btn btn-info" onclick="showMetrics()">显示当前指标</button>
+      </div>
+      <div class="metrics-display" id="metricsDisplay" style="margin-top:16px;">
+        <div class="metric-item">
+          <div class="metric-label">FP</div>
+          <div class="metric-value" id="fpValue">-</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-label">FCP</div>
+          <div class="metric-value" id="fcpValue">-</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-label">LCP</div>
+          <div class="metric-value" id="lcpValue">-</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🐛 错误捕获测试</h2>
+      <div class="btn-group">
+        <button class="btn btn-danger" onclick="triggerJsError()">JS 运行时错误</button>
+        <button class="btn btn-danger" onclick="triggerPromiseError()">Promise 拒绝</button>
+        <button class="btn btn-danger" onclick="triggerResourceError()">资源加载错误</button>
+        <button class="btn btn-danger" onclick="triggerHttpError()">HTTP 请求错误</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>⏱️ 渲染性能测试</h2>
+      <div class="btn-group">
+        <button class="btn btn-warning" onclick="triggerLongTask()">模拟长任务 (200ms)</button>
+        <button class="btn btn-warning" onclick="triggerHeavyRender()">模拟重渲染</button>
+        <button class="btn btn-info" onclick="showRendererMetrics()">显示渲染指标</button>
+      </div>
+      <div class="test-area" id="testArea" style="margin-top:16px;">
+        测试区域
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📤 数据上报测试</h2>
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="manualReport()">手动上报数据</button>
+        <button class="btn btn-primary" onclick="batchReport()">批量上报测试</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📝 操作日志</h2>
+      <div class="log-area" id="logArea">
+        <div class="log-item"><span class="log-time">[系统]</span> <span class="log-info">等待操作...</span></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/performance-monitor.js"></script>
+  <script src="js/error-tracker.js"></script>
+  <script src="js/renderer-monitor.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    const monitor = new FrontendMonitor({
+      appId: 'test-app',
+      userId: 'test-user',
+      reportUrl: 'http://localhost:8000/api/report',
+      apiUrl: 'http://localhost:8000/api'
+    });
+
+    function log(message, type = 'info') {
+      const logArea = document.getElementById('logArea');
+      const time = new Date().toLocaleTimeString();
+      const logItem = document.createElement('div');
+      logItem.className = 'log-item';
+      logItem.innerHTML = `<span class="log-time">[${time}]</span> <span class="log-${type}">${message}</span>`;
+      logArea.appendChild(logItem);
+      logArea.scrollTop = logArea.scrollHeight;
+    }
+
+    function reloadPage() {
+      log('页面即将重新加载...', 'info');
+      setTimeout(() => location.reload(), 1000);
+    }
+
+    function showMetrics() {
+      const metrics = monitor.getMetrics();
+      const perf = metrics.performance || {};
+      
+      document.getElementById('fpValue').textContent = perf.fp ? Math.round(perf.fp) + ' ms' : '-';
+      document.getElementById('fcpValue').textContent = perf.fcp ? Math.round(perf.fcp) + ' ms' : '-';
+      document.getElementById('lcpValue').textContent = perf.lcp ? Math.round(perf.lcp) + ' ms' : '-';
+      
+      log('性能指标已更新', 'success');
+    }
+
+    function triggerJsError() {
+      log('触发 JS 运行时错误...', 'error');
+      setTimeout(() => {
+        throw new Error('测试错误: 这是一个主动触发的JavaScript运行时错误');
+      }, 100);
+    }
+
+    function triggerPromiseError() {
+      log('触发 Promise 拒绝...', 'error');
+      Promise.reject(new Error('测试错误: 这是一个未处理的Promise拒绝'));
+    }
+
+    function triggerResourceError() {
+      log('触发资源加载错误...', 'error');
+      const img = document.createElement('img');
+      img.src = 'http://localhost:9999/nonexistent-' + Date.now() + '.png';
+      img.onerror = () => {
+        img.remove();
+        log('资源加载错误已捕获', 'success');
+      };
+      document.body.appendChild(img);
+    }
+
+    function triggerHttpError() {
+      log('触发 HTTP 请求错误...', 'error');
+      fetch('http://localhost:9999/api/test')
+        .catch(() => {
+          log('HTTP 请求错误已捕获', 'success');
+        });
+    }
+
+    function triggerLongTask() {
+      log('模拟长任务执行中...', 'info');
+      const start = Date.now();
+      while (Date.now() - start < 200) {
+        // 阻塞主线程
+      }
+      log('长任务执行完成 (200ms)', 'success');
+    }
+
+    function triggerHeavyRender() {
+      log('模拟重渲染...', 'info');
+      const testArea = document.getElementById('testArea');
+      testArea.innerHTML = '';
+      
+      for (let i = 0; i < 10000; i++) {
+        const div = document.createElement('div');
+        div.textContent = '元素 ' + i;
+        div.style.cssText = 'padding:2px;margin:1px;background:#eee;font-size:10px;';
+        testArea.appendChild(div);
+      }
+      
+      log('重渲染完成 (10000个元素)', 'success');
+    }
+
+    function showRendererMetrics() {
+      const metrics = monitor.getMetrics();
+      const renderer = metrics.renderer || {};
+      log(`FPS: ${renderer.fps}, 长任务: ${renderer.long_task_count}, 卡顿: ${renderer.jank_count}`, 'info');
+    }
+
+    function manualReport() {
+      log('手动上报数据...', 'info');
+      monitor.reportRenderer();
+      log('数据上报完成', 'success');
+    }
+
+    async function batchReport() {
+      log('批量上报测试...', 'info');
+      
+      const reportData = {
+        performance: [{
+          app_id: 'test-app',
+          user_id: 'test-user',
+          session_id: 'test-session-' + Date.now(),
+          page_url: window.location.href,
+          timestamp: new Date().toISOString(),
+          metrics: {
+            fp: 1200 + Math.random() * 500,
+            fcp: 1500 + Math.random() * 500,
+            lcp: 2000 + Math.random() * 1000,
+            ttfb: 200 + Math.random() * 200,
+            dom_ready: 2500 + Math.random() * 500,
+            load_time: 3000 + Math.random() * 1000
+          }
+        }],
+        errors: [{
+          app_id: 'test-app',
+          user_id: 'test-user',
+          session_id: 'test-session-' + Date.now(),
+          page_url: window.location.href,
+          timestamp: new Date().toISOString(),
+          error: {
+            type: 'js',
+            message: '批量测试错误: ' + Date.now(),
+            stack: 'Error: 批量测试错误\n    at batchReport (test.html:1)',
+            error_type: 'js_error'
+          }
+        }],
+        renderer: [{
+          app_id: 'test-app',
+          user_id: 'test-user',
+          session_id: 'test-session-' + Date.now(),
+          page_url: window.location.href,
+          timestamp: new Date().toISOString(),
+          renderer: {
+            fps: 55 + Math.random() * 10,
+            memory_used: 50 + Math.random() * 30,
+            long_task_count: Math.floor(Math.random() * 5),
+            jank_count: Math.floor(Math.random() * 3)
+          }
+        }]
+      };
+
+      try {
+        const response = await fetch('http://localhost:8000/api/report/batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(reportData)
+        });
+        const result = await response.json();
+        log('批量上报成功: ' + JSON.stringify(result), 'success');
+      } catch (error) {
+        log('批量上报失败: ' + error.message, 'error');
+      }
+    }
+
+    window.addEventListener('load', () => {
+      log('测试页面加载完成，监控系统已启动', 'success');
+      setTimeout(showMetrics, 2000);
+    });
+
+    window.addEventListener('error', (e) => {
+      log('捕获到错误: ' + (e.message || e.error?.message), 'error');
+    });
+
+    window.addEventListener('unhandledrejection', (e) => {
+      log('捕获到Promise拒绝: ' + (e.reason?.message || String(e.reason)), 'error');
+    });
+  </script>
+</body>
+</html>

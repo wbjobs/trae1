@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>前端性能监控溯源系统</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🛡️ 前端性能监控溯源系统</h1>
+      <p>实时性能数据采集 · 异常追踪 · 渲染监控 · 历史数据查询</p>
+      <span class="realtime-indicator" style="margin-top:10px;display:inline-flex;">
+        <span class="realtime-dot"></span>
+        实时监控中
+      </span>
+    </div>
+
+    <div class="config-panel">
+      <h2>⚙️ 监控配置</h2>
+      <div class="config-row">
+        <div class="config-item">
+          <label>应用ID (App ID)</label>
+          <input type="text" id="appId" value="demo-app" placeholder="请输入应用标识">
+        </div>
+        <div class="config-item">
+          <label>用户ID (User ID)</label>
+          <input type="text" id="userId" value="user-001" placeholder="请输入用户标识">
+        </div>
+        <div class="config-item">
+          <label>后端地址</label>
+          <input type="text" id="backendUrl" value="http://localhost:8000" placeholder="后端服务地址">
+        </div>
+        <div class="config-item">
+          <label>采样率</label>
+          <input type="number" id="sampleRate" value="1" step="0.1" min="0" max="1">
+        </div>
+        <div class="config-item" style="flex: 0 0 auto;">
+          <label>&nbsp;</label>
+          <button class="btn btn-primary" onclick="startMonitor()">启动监控</button>
+        </div>
+        <div class="config-item" style="flex: 0 0 auto;">
+          <label>&nbsp;</label>
+          <button class="btn btn-secondary" onclick="stopMonitor()">停止监控</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="score-panel">
+      <div class="score-card">
+        <div class="score-label">性能评分</div>
+        <div class="score-value" id="overallScore">--</div>
+        <div class="score-grade" id="overallGrade">--</div>
+        <div class="score-trend" id="scoreTrend">--</div>
+      </div>
+      <div class="score-details" id="scoreDetails">
+        <div class="empty-state">
+          <div class="empty-state-icon">📊</div>
+          <p>等待性能评分...</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="alert-panel" id="alertPanel">
+      <div class="alert-header">
+        <h2>🚨 告警信息</h2>
+        <div class="alert-summary" id="alertSummary"></div>
+      </div>
+      <div class="alert-list" id="alertList">
+        <div class="empty-state">
+          <div class="empty-state-icon">✅</div>
+          <p>暂无告警</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="dashboard-grid">
+      <div class="card">
+        <div class="card-header">
+          <h3>📊 性能指标 (Core Web Vitals)</h3>
+          <span class="card-icon icon-performance">⚡</span>
+        </div>
+        <div id="performanceMetrics">
+          <div class="empty-state">
+            <div class="empty-state-icon">📊</div>
+            <p>等待采集性能数据...</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3>⚠️ 异常捕获</h3>
+          <span class="card-icon icon-error">🐛</span>
+        </div>
+        <div id="errorList">
+          <div class="empty-state">
+            <div class="empty-state-icon">✅</div>
+            <p>暂无异常捕获</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3>🎨 渲染监控</h3>
+          <span class="card-icon icon-renderer">🖼️</span>
+        </div>
+        <div id="rendererMetrics">
+          <div class="empty-state">
+            <div class="empty-state-icon">🎨</div>
+            <p>等待渲染数据...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="export-panel">
+      <h2>📤 数据导出</h2>
+      <div class="config-row">
+        <div class="config-item">
+          <label>数据类型</label>
+          <select id="exportType">
+            <option value="performance">性能数据</option>
+            <option value="errors">错误数据</option>
+            <option value="renderer">渲染数据</option>
+            <option value="alerts">告警数据</option>
+          </select>
+        </div>
+        <div class="config-item">
+          <label>导出格式</label>
+          <select id="exportFormat">
+            <option value="csv">CSV</option>
+            <option value="json">JSON</option>
+          </select>
+        </div>
+        <div class="config-item" style="flex: 0 0 auto;">
+          <label>&nbsp;</label>
+          <button class="btn btn-primary" onclick="exportData()">导出数据</button>
+        </div>
+        <div class="config-item" style="flex: 0 0 auto;">
+          <label>&nbsp;</label>
+          <button class="btn btn-secondary" onclick="exportScoreReport()">导出评分报告</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="query-panel">
+      <h2>🔍 历史数据查询</h2>
+      <div class="config-row">
+        <div class="config-item">
+          <label>开始时间</label>
+          <input type="datetime-local" id="startTime">
+        </div>
+        <div class="config-item">
+          <label>结束时间</label>
+          <input type="datetime-local" id="endTime">
+        </div>
+        <div class="config-item">
+          <label>页面URL (可选)</label>
+          <input type="text" id="filterPageUrl" placeholder="过滤特定页面">
+        </div>
+        <div class="config-item" style="flex: 0 0 auto;">
+          <label>&nbsp;</label>
+          <button class="btn btn-primary" onclick="queryData()">查询数据</button>
+        </div>
+      </div>
+
+      <div class="query-tabs" id="queryTabs" style="margin-top:20px;">
+        <button class="query-tab active" onclick="switchQueryTab('performance')" data-tab="performance">📈 性能趋势</button>
+        <button class="query-tab" onclick="switchQueryTab('errors')" data-tab="errors">🐛 错误溯源</button>
+        <button class="query-tab" onclick="switchQueryTab('renderer')" data-tab="renderer">🎨 渲染统计</button>
+        <button class="query-tab" onclick="switchQueryTab('stats')" data-tab="stats">📊 汇总统计</button>
+      </div>
+
+      <div class="query-result" id="queryResult">
+        <div class="empty-state">
+          <div class="empty-state-icon">🔍</div>
+          <p>请选择时间范围并点击查询</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:24px;">
+      <div class="card-header">
+        <h3>🧪 测试操作</h3>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <button class="btn btn-secondary" onclick="testJsError()">触发JS错误</button>
+        <button class="btn btn-secondary" onclick="testPromiseError()">触发Promise错误</button>
+        <button class="btn btn-secondary" onclick="testResourceError()">触发资源加载错误</button>
+        <button class="btn btn-secondary" onclick="testLongTask()">模拟长任务</button>
+        <button class="btn btn-secondary" onclick="forceReportRenderer()">立即上报渲染数据</button>
+        <button class="btn btn-secondary" onclick="clearAlerts()">清除告警</button>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>前端性能监控溯源系统 v2.0.0 | Powered by FastAPI + InfluxDB</p>
+    </div>
+  </div>
+
+  <script src="js/performance-monitor.js"></script>
+  <script src="js/error-tracker.js"></script>
+  <script src="js/renderer-monitor.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/alert-manager.js"></script>
+  <script src="js/performance-scorer.js"></script>
+  <script src="js/data-exporter.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>
