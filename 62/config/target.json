@@ -1,0 +1,53 @@
+{
+  "rpc_socket": "/var/tmp/nvmeof.sock",
+  "hugepage_size_mb": 2048,
+  "core_mask": "0xF",
+  "log_level": "NOTICE",
+  "nvme_bdevs": [
+    {
+      "name": "Nvme0",
+      "trtype": "PCIe",
+      "traddr": "0000:3b:00.0"
+    }
+  ],
+  "subsystems": [
+    {
+      "nqn": "nqn.2024-01.io.spdk:nvme",
+      "allow_any_host": true,
+      "hosts": [],
+      "namespaces": [
+        {
+          "bdev_name": "Nvme0n1",
+          "nsid": 1,
+          "nguid": "0102030405060708090a0b0c0d0e0f10",
+          "enable_barrier": true
+        }
+      ],
+      "listeners": [
+        {
+          "trtype": "TCP",
+          "traddr": "0.0.0.0",
+          "trsvcid": "4420",
+          "adrfam": 0
+        }
+      ],
+      "replication": {
+        "role": "primary",
+        "backups": [
+          {
+            "traddr": "192.168.10.11",
+            "trsvcid": "4420",
+            "nqn": "nqn.2024-01.io.spdk:nvme-backup1",
+            "remote_nsid": 1
+          },
+          {
+            "traddr": "192.168.10.12",
+            "trsvcid": "4420",
+            "nqn": "nqn.2024-01.io.spdk:nvme-backup2",
+            "remote_nsid": 1
+          }
+        ]
+      }
+    }
+  ]
+}
