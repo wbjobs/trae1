@@ -1,0 +1,113 @@
+# pg-proxy configuration example
+# Copy to pg-proxy.toml and modify as needed
+
+# Global settings
+[global]
+# Log level: trace, debug, info, warn, error
+log_level = "info"
+
+# Default compression settings
+[default]
+# Enable compression by default
+compression_enabled = true
+# Minimum data size to compress (bytes), smaller data won't be compressed
+# Recommended: 4096 (4KB) to avoid TOAST overhead for small data
+min_compress_size = 4096
+# Compression level for LZ4 (1-12, higher = better compression but slower)
+compression_level = 1
+# Enable adaptive compression mode (recommended)
+# When enabled, proxy avoids compressing data that would still trigger TOAST
+# after compression, preventing double-storage overhead
+adaptive_mode = true
+
+# Default TLS settings
+[default.tls]
+# Certificate directory
+cert_dir = "./certs"
+# Enable hot reload of certificates
+hot_reload = true
+# Reload interval in seconds
+reload_interval_secs = 3600
+
+# Client-facing TLS settings (proxy acts as TLS server)
+[default.tls.client]
+# Enable TLS for client connections
+enabled = false
+# Server certificate file path
+# cert_file = "./certs/server.crt"
+# Server private key file path
+# key_file = "./certs/server.key"
+# CA certificate for client authentication (required if require_client_cert is true)
+# ca_file = "./certs/ca.crt"
+# Require client certificate for mutual TLS
+require_client_cert = false
+# Minimum TLS version
+min_version = "TLSv1.3"
+
+# Server-facing TLS settings (proxy acts as TLS client)
+[default.tls.server]
+# Enable TLS for database connections
+enabled = false
+# Client certificate file path (for mutual TLS)
+# cert_file = "./certs/client.crt"
+# Client private key file path (for mutual TLS)
+# key_file = "./certs/client.key"
+# CA certificate for server verification
+# ca_file = "./certs/ca.crt"
+# Verify server certificate
+verify_server_cert = true
+# Accept invalid certificates (not recommended for production)
+accept_invalid_certs = false
+# Minimum TLS version
+min_version = "TLSv1.3"
+
+# Database instance configurations
+# Each instance proxies a separate PostgreSQL server
+[[instance]]
+# Instance name (used in stats CLI)
+name = "primary"
+# Proxy listen address
+listen_addr = "0.0.0.0:5433"
+# Target PostgreSQL server address
+target_addr = "127.0.0.1:5432"
+# Override default compression settings for this instance
+compression_enabled = true
+# Override min_compress_size for this instance (optional)
+# min_compress_size = 8192
+compression_level = 1
+# Override adaptive_mode for this instance (optional)
+# adaptive_mode = false
+
+# TLS settings for this instance (optional, overrides defaults)
+# [instance.tls]
+# client.enabled = true
+# client.cert_file = "./certs/server.crt"
+# client.key_file = "./certs/server.key"
+# client.ca_file = "./certs/ca.crt"
+# client.require_client_cert = true
+# server.enabled = true
+# server.cert_file = "./certs/client.crt"
+# server.key_file = "./certs/client.key"
+# server.ca_file = "./certs/ca.crt"
+# server.verify_server_cert = true
+
+# Tables/columns to compress
+# If not specified, all text/binary columns in INSERT/UPDATE will be compressed
+# [[instance.compress_columns]]
+# table = "logs"
+# columns = ["message", "payload"]
+
+# Another instance example:
+# [[instance]]
+# name = "analytics"
+# listen_addr = "0.0.0.0:5434"
+# target_addr = "127.0.0.1:5432"
+# compression_enabled = true
+# min_compress_size = 8192
+# adaptive_mode = true
+
+# Unix domain socket support (if target uses socket)
+# [[instance]]
+# name = "socket_instance"
+# listen_addr = "0.0.0.0:5435"
+# target_socket = "/var/run/postgresql/.s.PGSQL.5432"
