@@ -1,0 +1,225 @@
+syntax = "proto3";
+
+package dmp;
+
+option cc_generic_services = false;
+
+enum MemoryBlockState {
+    BLOCK_STATE_FREE = 0;
+    BLOCK_STATE_ALLOCATED = 1;
+    BLOCK_STATE_FAULT = 2;
+}
+
+enum BlockDataState {
+    DATA_STATE_INITIAL = 0;
+    DATA_STATE_WRITING = 1;
+    DATA_STATE_WRITTEN = 2;
+    DATA_STATE_WRITE_FAILED = 3;
+}
+
+enum LockState {
+    LOCK_STATE_UNLOCKED = 0;
+    LOCK_STATE_LOCKED = 1;
+    LOCK_STATE_CONTENTION = 2;
+}
+
+enum NodeState {
+    NODE_STATE_ONLINE = 0;
+    NODE_STATE_OFFLINE = 1;
+    NODE_STATE_DEGRADED = 2;
+}
+
+message MemoryBlock {
+    uint64 block_id = 1;
+    uint64 offset = 2;
+    uint64 size = 3;
+    MemoryBlockState state = 4;
+    uint64 owner_node_id = 5;
+    uint64 lease_expiry = 6;
+    BlockDataState data_state = 7;
+}
+
+message AllocateRequest {
+    uint64 size = 1;
+    uint64 client_node_id = 2;
+    bool exclusive = 3;
+}
+
+message AllocateResponse {
+    bool success = 1;
+    string error_message = 2;
+    MemoryBlock block = 3;
+    uint64 remote_node_id = 4;
+    string remote_address = 5;
+    uint32 remote_rkey = 6;
+    uint64 remote_offset = 7;
+}
+
+message ReleaseRequest {
+    uint64 block_id = 1;
+    uint64 client_node_id = 2;
+    bool force = 3;
+}
+
+message ReleaseResponse {
+    bool success = 1;
+    string error_message = 2;
+}
+
+message PutRequest {
+    uint64 block_id = 1;
+    uint64 offset = 2;
+    uint64 length = 3;
+    bytes data = 4;
+    uint64 client_node_id = 5;
+}
+
+message PutResponse {
+    bool success = 1;
+    string error_message = 2;
+    uint64 bytes_written = 3;
+}
+
+message GetRequest {
+    uint64 block_id = 1;
+    uint64 offset = 2;
+    uint64 length = 3;
+    uint64 client_node_id = 4;
+}
+
+message GetResponse {
+    bool success = 1;
+    string error_message = 2;
+    bytes data = 3;
+    uint64 bytes_read = 4;
+}
+
+message MemoryStats {
+    uint64 total_capacity = 1;
+    uint64 used_capacity = 2;
+    uint64 free_capacity = 3;
+    double usage_percent = 4;
+    double fragmentation_ratio = 5;
+    uint64 total_blocks = 6;
+    uint64 allocated_blocks = 7;
+    uint64 free_blocks = 8;
+}
+
+message NodeInfo {
+    uint64 node_id = 1;
+    string address = 2;
+    uint32 port = 3;
+    NodeState state = 4;
+    MemoryStats stats = 5;
+    uint64 last_heartbeat = 6;
+}
+
+message MonitorRequest {
+    bool detailed = 1;
+}
+
+message MonitorResponse {
+    MemoryStats global_stats = 1;
+    repeated NodeInfo nodes = 2;
+    repeated MemoryBlock leaked_blocks = 3;
+}
+
+message HeartbeatRequest {
+    uint64 node_id = 1;
+    MemoryStats stats = 2;
+    uint64 timestamp = 3;
+}
+
+message HeartbeatResponse {
+    bool accepted = 1;
+    uint64 server_timestamp = 2;
+}
+
+message NodeFailureRequest {
+    uint64 failed_node_id = 1;
+    string reason = 2;
+}
+
+message NodeFailureResponse {
+    bool success = 1;
+    uint64 recovered_blocks = 2;
+    uint64 recovered_memory = 3;
+}
+
+message LockInfo {
+    uint64 block_id = 1;
+    uint64 owner_node_id = 2;
+    LockState state = 3;
+    uint64 acquire_timestamp = 4;
+    uint64 last_renew_timestamp = 5;
+    uint64 acquire_count = 6;
+    bool expired = 7;
+}
+
+message LockRequest {
+    uint64 block_id = 1;
+    uint64 client_node_id = 2;
+    uint64 timeout_ms = 3;
+}
+
+message LockResponse {
+    bool success = 1;
+    string error_message = 2;
+    LockInfo lock = 3;
+}
+
+message UnlockRequest {
+    uint64 block_id = 1;
+    uint64 client_node_id = 2;
+    bool force = 3;
+}
+
+message UnlockResponse {
+    bool success = 1;
+    string error_message = 2;
+}
+
+message RenewLockRequest {
+    uint64 block_id = 1;
+    uint64 client_node_id = 2;
+}
+
+message RenewLockResponse {
+    bool success = 1;
+    string error_message = 2;
+}
+
+message LockStats {
+    uint64 total_locks = 1;
+    uint64 active_locks = 2;
+    uint64 lock_acquisitions = 3;
+    uint64 lock_releases = 4;
+    uint64 lock_timeouts = 5;
+    uint64 lock_contentions = 6;
+    uint64 deadlocks_detected = 7;
+    double avg_lock_hold_time_ms = 8;
+}
+
+message LockMonitorRequest {
+    bool detailed = 1;
+}
+
+message LockMonitorResponse {
+    LockStats stats = 1;
+    repeated LockInfo active_locks = 2;
+    repeated LockInfo expired_locks = 3;
+}
+
+service MemoryService {
+    rpc Allocate(AllocateRequest) returns (AllocateResponse);
+    rpc Release(ReleaseRequest) returns (ReleaseResponse);
+    rpc Put(PutRequest) returns (PutResponse);
+    rpc Get(GetRequest) returns (GetResponse);
+    rpc Lock(LockRequest) returns (LockResponse);
+    rpc Unlock(UnlockRequest) returns (UnlockResponse);
+    rpc RenewLock(RenewLockRequest) returns (RenewLockResponse);
+    rpc LockMonitor(LockMonitorRequest) returns (LockMonitorResponse);
+    rpc Monitor(MonitorRequest) returns (MonitorResponse);
+    rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+    rpc ReportNodeFailure(NodeFailureRequest) returns (NodeFailureResponse);
+}
