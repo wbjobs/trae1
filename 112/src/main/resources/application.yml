@@ -1,0 +1,79 @@
+spring:
+  application:
+    name: rsocket-gateway
+
+  rsocket:
+    server:
+      transport: websocket
+      mapping-path: /rsocket
+      port: 7000
+
+  cloud:
+    consul:
+      host: localhost
+      port: 8500
+      discovery:
+        enabled: true
+        register: false
+
+  codec:
+    max-in-memory-size: 16MB
+
+server:
+  port: 8080
+
+gateway:
+  routing:
+    rules:
+      "userService.getUser":
+        source-service: userService
+        source-method: getUser
+        target-service: user-v2-service
+        target-method: findUser
+        enabled: true
+      "orderService.createOrder":
+        source-service: orderService
+        source-method: createOrder
+        target-service: order-v2-service
+        target-method: submitOrder
+        enabled: false
+  connection:
+    max-pending-requests: 1000
+    idle-timeout-minutes: 5
+    keepalive-interval-minutes: 5
+    buffer-size: 100
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30000
+        permitted-number-of-calls-in-half-open-state: 3
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+    instances:
+      userService:
+        base-config: default
+      orderService:
+        base-config: default
+        failure-rate-threshold: 40
+      paymentService:
+        base-config: default
+        failure-rate-threshold: 30
+        wait-duration-in-open-state: 20000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, prometheus, circuitbreakers
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    root: INFO
+    com.rsocket.gateway: DEBUG
+    io.rsocket: DEBUG
