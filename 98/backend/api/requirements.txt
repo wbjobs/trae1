@@ -1,0 +1,6 @@
+flask>=2.3.0
+flask-cors>=4.0.0
+libtorrent>=2.0.0
+Pillow>=9.0.0
+numpy>=1.21.0
+scipy>=1.7.0
