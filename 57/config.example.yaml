@@ -1,0 +1,62 @@
+# mylvmbackup 示例配置
+log_level: INFO
+
+mysql:
+  host: 127.0.0.1
+  port: 3306
+  user: root
+  # 密码可通过环境变量 MYSQL_PASSWORD 设置
+  password: ""
+  # 若使用 socket 则填下面；或使用 defaults-file
+  # socket: /var/run/mysqld/mysqld.sock
+  # defaults_file: /etc/mysql/debian.cnf
+
+lvm:
+  vg_name: datavg
+  lv_name: mysql_data
+  # 使用精简快照时需提供 thin_pool；留空则使用传统快照
+  thin_pool: thin_pool0
+  snapshot_name_prefix: mysnap
+  # 留空则自适应（源 LV 20%，上限 VG 可用 50% / 精简池 80%）
+  snapshot_size:
+  mount_base: /mnt/mysql-snapshots
+  fs_type: xfs
+
+backup:
+  mydumper_path: mydumper
+  myloader_path: myloader
+  mysqlcheck_path: mysqlcheck
+  threads: 4
+  compress_program: zstd        # zstd | gzip | pigz | lz4 | none
+  compress_level: 3
+  output_dir: /var/backups/mysql
+  temp_dir: /var/backups/mysql/tmp
+  retention_days: 7
+  verify_checksum: true        # 恢复时校验归档 SHA256
+  verify_mysqlcheck: true      # 恢复后自动执行 mysqlcheck
+
+gpg:
+  enabled: false
+  gpg_binary: gpg
+  symmetric: true              # 使用对称加密
+  cipher_algo: AES256          # AES256 | AES128 | TWOFISH 等
+  # 口令可通过环境变量 GPG_PASSPHRASE 设置
+  passphrase: ""
+  # 或使用口令文件；可通过环境变量 GPG_PASSPHRASE_FILE
+  passphrase_file: ""
+  # recipient: backup@example.com  # 非对称加密时的接收者
+  armor: false                  # 是否输出 ASCII armor
+
+s3:
+  enabled: true
+  bucket: my-backups
+  prefix: mysql-backups
+  region: us-east-1
+  # 对于 MinIO / Ceph RGW 等兼容存储
+  # endpoint_url: https://minio.example.com
+  # access_key / secret_key 可通过 AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY 环境变量
+  # access_key: xxx
+  # secret_key: xxx
+  # profile: default
+  extra_args:
+    ServerSideEncryption: AES256
