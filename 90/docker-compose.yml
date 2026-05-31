@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  ipfs:
+    image: ipfs/go-ipfs:v0.28.0
+    container_name: configvcs-ipfs
+    ports:
+      - "4001:4001"
+      - "5001:5001"
+      - "8080:8080"
+    volumes:
+      - ipfs-data:/data/ipfs
+    environment:
+      - IPFS_PROFILE=server
+    command: ["daemon", "--migrate=true", "--enable-gc"]
+
+  ipfs-cluster:
+    image: ipfs/ipfs-cluster:latest
+    container_name: configvcs-ipfs-cluster
+    depends_on:
+      - ipfs
+    ports:
+      - "9094:9094"
+      - "9095:9095"
+      - "9096:9096"
+    volumes:
+      - cluster-data:/data/ipfs-cluster
+    environment:
+      - CLUSTER_PEERNAME=cluster-node
+    command: ["daemon"]
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: configvcs-backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - ipfs
+    environment:
+      - IPFS_ADDR=ipfs:5001
+      - DB_PATH=/data/badger
+      - SERVER_PORT=8080
+    volumes:
+      - backend-data:/data
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: configvcs-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      - REACT_APP_API_URL=http://localhost:8080/api
+
+volumes:
+  ipfs-data:
+  cluster-data:
+  backend-data:
