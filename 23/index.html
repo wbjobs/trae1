@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D轨道竞速模拟</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        
+        <div id="ui-overlay">
+            <div id="hud">
+                <div class="hud-item">
+                    <span class="hud-label">速度</span>
+                    <span id="speed-value">0</span>
+                    <span class="hud-unit">km/h</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">时间</span>
+                    <span id="time-value">00:00.00</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">分数</span>
+                    <span id="score-value">0</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">圈数</span>
+                    <span id="lap-value">0/3</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">碰撞</span>
+                    <span id="collision-value">0</span>
+                </div>
+            </div>
+            
+            <div id="minimap-container">
+                <canvas id="minimap"></canvas>
+            </div>
+            
+            <div id="camera-indicator">
+                <span>视角: </span>
+                <span id="camera-mode">第三人称</span>
+            </div>
+            
+            <div id="controls-hint">
+                <div class="hint-row"><span class="key">W/↑</span><span>加速</span></div>
+                <div class="hint-row"><span class="key">S/↓</span><span>刹车/倒车</span></div>
+                <div class="hint-row"><span class="key">A/←</span><span>左转</span></div>
+                <div class="hint-row"><span class="key">D/→</span><span>右转</span></div>
+                <div class="hint-row"><span class="key">Space</span><span>氮气加速</span></div>
+                <div class="hint-row"><span class="key">C</span><span>切换视角</span></div>
+                <div class="hint-row"><span class="key">R</span><span>重置位置</span></div>
+                <div class="hint-row"><span class="key">F</span><span>录制/停止</span></div>
+                <div class="hint-row"><span class="key">G</span><span>回放录像</span></div>
+            </div>
+        </div>
+        
+        <div id="start-screen" class="overlay-screen">
+            <div class="screen-content">
+                <h1>🏁 3D轨道竞速 🏁</h1>
+                <p class="subtitle">轨道竞速模拟挑战</p>
+                <div class="track-info">
+                    <p>随机生成的3D赛道正等待着你</p>
+                    <p>收集氮气瓶，避开障碍物，完成3圈挑战！</p>
+                </div>
+                <button id="start-btn" class="game-btn">开始游戏</button>
+                <div class="game-instructions">
+                    <h3>游戏说明</h3>
+                    <ul>
+                        <li>使用 WASD 或 方向键 控制车辆</li>
+                        <li>按 空格键 使用氮气加速（需收集氮气瓶）</li>
+                        <li>按 C 键切换视角模式</li>
+                        <li>按 R 键重置车辆位置</li>
+                        <li>按 F 键开始/停止录像</li>
+                        <li>按 G 键回放已保存的录像</li>
+                        <li>碰撞障碍物会扣分并减速</li>
+                        <li>障碍物会随机刷新，注意避让！</li>
+                        <li>完成3圈记录你的最佳成绩</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div id="finish-screen" class="overlay-screen hidden">
+            <div class="screen-content">
+                <h1>🎉 完成挑战！ 🎉</h1>
+                <div class="results">
+                    <div class="result-item">
+                        <span>完成时间</span>
+                        <span id="final-time">00:00.00</span>
+                    </div>
+                    <div class="result-item">
+                        <span>最终得分</span>
+                        <span id="final-score">0</span>
+                    </div>
+                    <div class="result-item">
+                        <span>碰撞次数</span>
+                        <span id="final-collisions">0</span>
+                    </div>
+                    <div class="result-item">
+                        <span>最高速度</span>
+                        <span id="final-max-speed">0</span>
+                    </div>
+                </div>
+                <div class="leaderboard">
+                    <h3>🏆 排行榜 🏆</h3>
+                    <ol id="leaderboard-list"></ol>
+                </div>
+                <button id="restart-btn" class="game-btn">再来一局</button>
+            </div>
+        </div>
+        
+        <div id="pause-screen" class="overlay-screen hidden">
+            <div class="screen-content">
+                <h2>游戏暂停</h2>
+                <p>按 ESC 继续游戏</p>
+                <button id="resume-btn" class="game-btn">继续</button>
+                <button id="quit-btn" class="game-btn secondary">返回主菜单</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script src="js/track.js"></script>
+    <script src="js/physics.js"></script>
+    <script src="js/collision.js"></script>
+    <script src="js/scoring.js"></script>
+    <script src="js/camera.js"></script>
+    <script src="js/replay.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
