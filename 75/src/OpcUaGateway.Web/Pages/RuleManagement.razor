@@ -1,0 +1,617 @@
+@page "/rules"
+@using OpcUaGateway.Core.DTOs
+@using OpcUaGateway.Core.Models
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>规则引擎管理</PageTitle>
+
+<div class="container-fluid mt-3">
+    <h3>
+        <span class="oi oi-code mr-2"></span>
+        边缘计算规则引擎
+    </h3>
+    <p class="text-muted">在网关上执行数据处理：移动平均滤波、速率计算、单位转换、自定义JavaScript脚本</p>
+
+    <ul class="nav nav-tabs mt-3">
+        <li class="nav-item">
+            <a class="nav-link @(activeTab == "rules" ? "active" : "")" @onclick="@(() => activeTab = "rules")">规则列表</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(activeTab == "debug" ? "active" : "")" @onclick="@(() => activeTab = "debug")">规则调试</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(activeTab == "performance" ? "active" : "")" @onclick="@(() => activeTab = "performance")">性能监控</a>
+        </li>
+    </ul>
+
+    @if (activeTab == "rules")
+    {
+        <div class="mt-3">
+            <div class="d-flex justify-content-between mb-3">
+                <div>
+                    <select class="form-control d-inline-block w-auto mr-2" @bind="filterDeviceId">
+                        <option value="">全部设备</option>
+                        @if (devices != null)
+                        {
+                            @foreach (var d in devices)
+                            {
+                                <option value="@d.DeviceId">@d.DeviceName</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <button class="btn btn-primary" @onclick="ShowCreateModal">
+                    <span class="oi oi-plus mr-1"></span> 新建规则
+                </button>
+            </div>
+
+            @if (rules == null)
+            {
+                <div class="text-center"><span class="spinner-border spinner-border-sm"></span> 加载中...</div>
+            }
+            else if (rules.Count == 0)
+            {
+                <div class="alert alert-info">暂无计算规则</div>
+            }
+            else
+            {
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>规则名称</th>
+                            <th>设备</th>
+                            <th>类型</th>
+                            <th>源点位</th>
+                            <th>输出</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var rule in rules)
+                        {
+                            <tr>
+                                <td>
+                                    <strong>@rule.RuleName</strong>
+                                    <div><small class="text-muted">@rule.Description</small></div>
+                                </td>
+                                <td>@rule.DeviceId</td>
+                                <td>
+                                    <span class="badge badge-info">@rule.RuleType</span>
+                                </td>
+                                <td><code>@rule.SourcePointId</code></td>
+                                <td>
+                                    <code>@rule.OutputPointName</code>
+                                    <div><small class="text-muted">@rule.OutputUnit</small></div>
+                                </td>
+                                <td>
+                                    @if (rule.IsEnabled && rule.Status == "Active")
+                                    {
+                                        <span class="badge badge-success">运行中</span>
+                                    }
+                                    else if (rule.Status.Contains("AutoDisabled"))
+                                    {
+                                        <span class="badge badge-danger">已禁用(@rule.Status)</span>
+                                    }
+                                    else if (!rule.IsEnabled)
+                                    {
+                                        <span class="badge badge-secondary">已停用</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-warning">@rule.Status</span>
+                                    }
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-info mr-1" @onclick="@(() => ShowEditModal(rule))">编辑</button>
+                                    @if (rule.IsEnabled)
+                                    {
+                                        <button class="btn btn-sm btn-outline-warning mr-1" @onclick="@(() => ToggleEnabled(rule, false))">停用</button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-outline-success mr-1" @onclick="@(() => ToggleEnabled(rule, true))">启用</button>
+                                    }
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="@(() => DeleteRule(rule))">删除</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    }
+
+    @if (activeTab == "debug")
+    {
+        <div class="mt-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">规则调试器</h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>规则名称</label>
+                        <input class="form-control" @bind="debugRequest.RuleName" placeholder="例如：摄氏度转华氏度" />
+                    </div>
+                    <div class="form-group">
+                        <label>测试输入值</label>
+                        <input class="form-control" type="number" @bind="debugTestValue" placeholder="例如：25" />
+                    </div>
+                    <div class="form-group">
+                        <label>脚本内容</label>
+                        <textarea class="form-control" @bind="debugRequest.Script" rows="6"
+                                  placeholder="return value * 1.8 + 32;"
+                                  style="font-family:monospace"></textarea>
+                        <small class="text-muted">可用变量：value（输入值）、input、以及自定义变量</small>
+                    </div>
+                    <div class="form-group">
+                        <label>可选上下文变量（JSON格式）</label>
+                        <textarea class="form-control" @bind="debugContextJson" rows="2"
+                                  placeholder='例如：{"threshold": 50, "factor": 1.2}'
+                                  style="font-family:monospace"></textarea>
+                    </div>
+                    <button class="btn btn-primary" @onclick="RunDebug">
+                        <span class="oi oi-play-circle mr-1"></span> 运行测试
+                    </button>
+
+                    @if (debugResult != null)
+                    {
+                        <div class="mt-3">
+                            <div class="card @(debugResult.Success ? "border-success" : "border-danger")">
+                                <div class="card-body">
+                                    @if (debugResult.Success)
+                                    {
+                                        <div><strong>结果：</strong> @debugResult.Result</div>
+                                        <div><strong>执行耗时：</strong> @($"{Math.Round(debugResult.ExecutionMs, 3)} ms")</div>
+                                        @if (debugResult.Variables != null && debugResult.Variables.Count > 0)
+                                        {
+                                            <div><strong>变量：</strong></div>
+                                            @foreach (var kvp in debugResult.Variables)
+                                            {
+                                                <div style="padding-left:15px"><code>@kvp.Key = @kvp.Value</code></div>
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <div class="text-danger"><strong>错误：</strong> @debugResult.ErrorMessage</div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">常用脚本模板</div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card p-2 mb-2" style="cursor:pointer" @onclick="@(() => debugRequest.Script = "return value * 1.8 + 32;")">
+                                <small>摄氏度→华氏度</small>
+                                <code style="font-size:11px">value * 1.8 + 32</code>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card p-2 mb-2" style="cursor:pointer" @onclick="@(() => debugRequest.Script = "return (value - 32) / 1.8;")">
+                                <small>华氏度→摄氏度</small>
+                                <code style="font-size:11px">(value - 32) / 1.8</code>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card p-2 mb-2" style="cursor:pointer" @onclick="@(() => debugRequest.Script = "return clamp(value, 0, 100);")">
+                                <small>范围限制</small>
+                                <code style="font-size:11px">clamp(value, 0, 100)</code>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card p-2 mb-2" style="cursor:pointer" @onclick="@(() => debugRequest.Script = "return abs(value);")">
+                                <small>绝对值</small>
+                                <code style="font-size:11px">abs(value)</code>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card p-2 mb-2" style="cursor:pointer" @onclick="@(() => debugRequest.Script = "return round(value, 2);")">
+                                <small>四舍五入</small>
+                                <code style="font-size:11px">round(value, 2)</code>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card p-2 mb-2" style="cursor:pointer" @onclick="@(() => debugRequest.Script = "return value > 100 ? 1 : 0;")">
+                                <small>条件判断</small>
+                                <code style="font-size:11px">value > 100 ? 1 : 0</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (activeTab == "performance")
+    {
+        <div class="mt-3">
+            @if (performanceStats == null)
+            {
+                <div class="text-center"><span class="spinner-border spinner-border-sm"></span> 加载中...</div>
+            }
+            else if (performanceStats.Count == 0)
+            {
+                <div class="alert alert-info">暂无性能数据</div>
+            }
+            else
+            {
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5>总执行次数</h5>
+                                <h3>@performanceStats.Sum(s => s.TotalExecutions)</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5>成功率</h5>
+                                <h3>
+                                    @{
+                                        var total = performanceStats.Sum(s => s.TotalExecutions);
+                                        var ok = performanceStats.Sum(s => s.SuccessCount);
+                                        var rate = total > 0 ? (double)ok / total * 100 : 0;
+                                        @($"{Math.Round(rate, 1)}%")
+                                    }
+                                </h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5>平均耗时</h5>
+                                <h3>
+                                    @{
+                                        var avg = performanceStats.Where(s => s.AverageExecutionMs > 0).Any()
+                                            ? performanceStats.Where(s => s.AverageExecutionMs > 0).Average(s => s.AverageExecutionMs)
+                                            : 0;
+                                        @($"{Math.Round(avg, 3)} ms")
+                                    }
+                                </h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5>超标规则</h5>
+                                <h3 class="text-danger">@performanceStats.Count(s => s.P95ExecutionMs > 5)</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>规则</th>
+                            <th>执行次数</th>
+                            <th>成功/失败</th>
+                            <th>平均耗时</th>
+                            <th>P95</th>
+                            <th>P99</th>
+                            <th>最大</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var stat in performanceStats)
+                        {
+                            <tr>
+                                <td>
+                                    <strong>@stat.RuleName</strong>
+                                    <div><small class="text-muted">@stat.RuleId</small></div>
+                                </td>
+                                <td>@stat.TotalExecutions</td>
+                                <td>
+                                    <span class="text-success">@stat.SuccessCount</span> /
+                                    <span class="text-danger">@stat.FailureCount</span>
+                                </td>
+                                <td class="@(stat.AverageExecutionMs > 5 ? "text-danger" : "")">@($"{Math.Round(stat.AverageExecutionMs, 3)} ms")</td>
+                                <td class="@(stat.P95ExecutionMs > 5 ? "text-danger" : "")">@($"{Math.Round(stat.P95ExecutionMs, 3)} ms")</td>
+                                <td class="@(stat.P99ExecutionMs > 5 ? "text-danger" : "")">@($"{Math.Round(stat.P99ExecutionMs, 3)} ms")</td>
+                                <td>@($"{Math.Round(stat.MaxExecutionMs, 3)} ms")</td>
+                                <td>
+                                    @if (stat.CurrentStatus == RuleExecutionStatus.Active)
+                                    {
+                                        <span class="badge badge-success">运行中</span>
+                                    }
+                                    else if (stat.CurrentStatus == RuleExecutionStatus.AutoDisabled_Performance)
+                                    {
+                                        <span class="badge badge-danger">性能超标</span>
+                                    }
+                                    else if (stat.CurrentStatus == RuleExecutionStatus.AutoDisabled_Error)
+                                    {
+                                        <span class="badge badge-danger">错误禁用</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-secondary">@stat.CurrentStatus</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    }
+</div>
+
+@if (showCreateModal || showEditModal)
+{
+    <div class="modal show d-block" tabindex="-1" style="background-color:rgba(0,0,0,0.5)">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5>@(showCreateModal ? "新建计算规则" : "编辑计算规则")</h5>
+                    <button class="close" @onclick="CloseModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>规则名称 *</label>
+                        <input class="form-control" @bind="editModel.RuleName" />
+                    </div>
+                    <div class="form-group">
+                        <label>描述</label>
+                        <input class="form-control" @bind="editModel.Description" />
+                    </div>
+                    <div class="form-group">
+                        <label>关联设备 *</label>
+                        <select class="form-control" @bind="editModel.DeviceId">
+                            <option value="">请选择</option>
+                            @if (devices != null)
+                            {
+                                @foreach (var d in devices)
+                                {
+                                    <option value="@d.DeviceId">@d.DeviceName</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>规则类型 *</label>
+                        <select class="form-control" @bind="editModel.RuleType">
+                            <option value="UnitConversion">单位转换</option>
+                            <option value="MovingAverage">移动平均</option>
+                            <option value="RateCalculation">速率计算</option>
+                            <option value="Expression">表达式</option>
+                            <option value="CustomScript">自定义脚本</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>源点位ID *</label>
+                        <input class="form-control" @bind="editModel.SourcePointId" placeholder="例如：P_Temp_01" />
+                    </div>
+                    <div class="form-group">
+                        <label>输出点位名称 *</label>
+                        <input class="form-control" @bind="editModel.OutputPointName" placeholder="例如：Temperature_F" />
+                    </div>
+                    <div class="form-group">
+                        <label>输出单位</label>
+                        <input class="form-control" @bind="editModel.OutputUnit" placeholder="例如：°F" />
+                    </div>
+                    <div class="form-group">
+                        <label>脚本内容 *</label>
+                        <textarea class="form-control" @bind="editModel.Script" rows="5"
+                                  placeholder="return value * 1.8 + 32;"
+                                  style="font-family:monospace"></textarea>
+                        <small class="text-muted">可用：value（输入值）、round(val, n)、abs(val)、min/max、clamp(val, min, max)</small>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>窗口大小（移动平均）</label>
+                                <input class="form-control" type="number" @bind="editModel.WindowSize" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>最大执行时间(ms)</label>
+                                <input class="form-control" type="number" @bind="editModel.MaxExecutionTimeMs" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>最大错误次数</label>
+                                <input class="form-control" type="number" @bind="editModel.MaxFailCount" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseModal">取消</button>
+                    <button class="btn btn-primary" @onclick="SaveRule">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string activeTab = "rules";
+    private string filterDeviceId = "";
+    private List<RuleDto>? rules;
+    private List<RulePerformanceDto>? performanceStats;
+    private List<Device>? devices;
+    private bool showCreateModal;
+    private bool showEditModal;
+    private RuleDto editModel = new();
+    private RuleDebugDto debugRequest = new();
+    private RuleDebugResponseDto? debugResult;
+    private double? debugTestValue;
+    private string debugContextJson = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            var url = "api/rules";
+            if (!string.IsNullOrEmpty(filterDeviceId))
+                url += $"?deviceId={filterDeviceId}";
+            rules = await Http.GetFromJsonAsync<List<RuleDto>>(url);
+        }
+        catch { rules = new List<RuleDto>(); }
+
+        try
+        {
+            devices = await Http.GetFromJsonAsync<List<DeviceDto>>("api/devices");
+        }
+        catch { devices = new List<DeviceDto>(); }
+
+        try
+        {
+            performanceStats = await Http.GetFromJsonAsync<List<RulePerformanceDto>>("api/rules/performance");
+        }
+        catch { performanceStats = new List<RulePerformanceDto>(); }
+    }
+
+    private void ShowCreateModal()
+    {
+        editModel = new RuleDto
+        {
+            RuleType = "CustomScript",
+            WindowSize = 10,
+            MaxExecutionTimeMs = 5.0,
+            MaxFailCount = 5,
+            IsEnabled = true
+        };
+        showCreateModal = true;
+        showEditModal = false;
+    }
+
+    private void ShowEditModal(RuleDto rule)
+    {
+        editModel = new RuleDto
+        {
+            RuleId = rule.RuleId,
+            RuleName = rule.RuleName,
+            DeviceId = rule.DeviceId,
+            RuleType = rule.RuleType,
+            SourcePointId = rule.SourcePointId,
+            OutputPointName = rule.OutputPointName,
+            OutputUnit = rule.OutputUnit,
+            Script = rule.Script,
+            Description = rule.Description,
+            IsEnabled = rule.IsEnabled,
+            WindowSize = rule.WindowSize,
+            MaxExecutionTimeMs = rule.MaxExecutionTimeMs,
+            MaxFailCount = rule.MaxFailCount
+        };
+        showEditModal = true;
+        showCreateModal = false;
+    }
+
+    private void CloseModal()
+    {
+        showCreateModal = false;
+        showEditModal = false;
+    }
+
+    private async Task SaveRule()
+    {
+        try
+        {
+            if (showCreateModal)
+            {
+                await Http.PostAsJsonAsync("api/rules", editModel);
+            }
+            else
+            {
+                await Http.PutAsJsonAsync($"api/rules/{editModel.RuleId}", editModel);
+            }
+            CloseModal();
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Save failed: {ex.Message}");
+        }
+    }
+
+    private async Task ToggleEnabled(RuleDto rule, bool enabled)
+    {
+        try
+        {
+            var url = enabled ? $"api/rules/{rule.RuleId}/enable" : $"api/rules/{rule.RuleId}/disable";
+            await Http.PutAsync(url, null);
+            await LoadData();
+        }
+        catch { }
+    }
+
+    private async Task DeleteRule(RuleDto rule)
+    {
+        try
+        {
+            await Http.DeleteAsync($"api/rules/{rule.RuleId}");
+            await LoadData();
+        }
+        catch { }
+    }
+
+    private async Task RunDebug()
+    {
+        try
+        {
+            debugResult = null;
+
+            var request = new RuleDebugDto
+            {
+                RuleName = debugRequest.RuleName,
+                Script = debugRequest.Script,
+                TestValue = debugTestValue
+            };
+
+            if (!string.IsNullOrEmpty(debugContextJson))
+            {
+                try
+                {
+                    var ctx = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, double>>(debugContextJson);
+                    if (ctx != null) request.Inputs = ctx;
+                }
+                catch { }
+            }
+
+            var response = await Http.PostAsJsonAsync("api/rules/debug", request);
+            if (response.IsSuccessStatusCode)
+            {
+                debugResult = await response.Content.ReadFromJsonAsync<RuleDebugResponseDto>();
+            }
+            else
+            {
+                debugResult = new RuleDebugResponseDto
+                {
+                    Success = false,
+                    ErrorMessage = $"HTTP {(int)response.StatusCode}"
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            debugResult = new RuleDebugResponseDto
+            {
+                Success = false,
+                ErrorMessage = ex.Message
+            };
+        }
+    }
+}
