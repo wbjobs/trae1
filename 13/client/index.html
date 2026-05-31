@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>日志脱敏审核系统</title>
+<link rel="stylesheet" href="https://unpkg.com/element-plus@2.4.4/dist/index.css" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f0f2f5; }
+  #app { height: 100%; }
+  .layout { height: 100%; display: flex; flex-direction: column; }
+  .header { height: 60px; background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: #fff; display: flex; align-items: center; padding: 0 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+  .header .logo { font-size: 18px; font-weight: 600; letter-spacing: 1px; }
+  .header .logo-icon { margin-right: 10px; }
+  .header .user { margin-left: auto; font-size: 14px; opacity: 0.9; }
+  .main { flex: 1; display: flex; overflow: hidden; }
+  .sidebar { width: 200px; background: #fff; border-right: 1px solid #e4e7ed; padding: 12px 0; }
+  .content { flex: 1; padding: 20px; overflow: auto; }
+  .page-card { background: #fff; border-radius: 6px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+  .page-title { font-size: 18px; font-weight: 600; margin: 0 0 16px; color: #303133; }
+  .stat-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
+  .stat-card { background: #fff; border-radius: 6px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+  .stat-card .label { font-size: 13px; color: #909399; }
+  .stat-card .value { font-size: 24px; font-weight: 600; margin-top: 6px; }
+  .stat-card .value.success { color: #67c23a; }
+  .stat-card .value.warning { color: #e6a23c; }
+  .stat-card .value.danger { color: #f56c6c; }
+  .stat-card .value.info { color: #409eff; }
+  .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .toolbar .spacer { flex: 1; }
+  .log-preview { background: #1e1e1e; color: #d4d4d4; font-family: Consolas, 'Courier New', monospace; font-size: 13px; padding: 12px; border-radius: 4px; max-height: 420px; overflow: auto; line-height: 1.6; }
+  .log-preview .line { display: flex; }
+  .log-preview .line-num { color: #858585; min-width: 50px; user-select: none; }
+  .log-preview .line-content { flex: 1; word-break: break-all; }
+  .log-preview .line-content .masked { color: #f56c6c; background: #3a1f1f; padding: 1px 4px; border-radius: 2px; }
+  .diff-box { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .diff-box .diff-col { background: #1e1e1e; border-radius: 4px; overflow: hidden; }
+  .diff-box .diff-header { padding: 8px 12px; font-size: 13px; font-weight: 600; background: #2d2d2d; color: #d4d4d4; }
+  .diff-box .diff-header.original { color: #f56c6c; }
+  .diff-box .diff-header.masked { color: #67c23a; }
+  .diff-box .diff-body { padding: 12px; max-height: 400px; overflow: auto; font-family: Consolas, monospace; font-size: 13px; line-height: 1.6; color: #d4d4d4; }
+  .upload-area { border: 2px dashed #d9d9d9; border-radius: 6px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.3s; background: #fafafa; }
+  .upload-area:hover, .upload-area.dragover { border-color: #409eff; background: #ecf5ff; }
+  .upload-area .icon { font-size: 48px; color: #409eff; }
+  .upload-area .tip { margin-top: 10px; color: #606266; font-size: 14px; }
+  .upload-area .sub-tip { color: #909399; font-size: 12px; margin-top: 4px; }
+  .form-section { margin-bottom: 18px; }
+  .form-section-title { font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #303133; padding-left: 8px; border-left: 3px solid #409eff; }
+  .field-card { border: 1px solid #ebeef5; border-radius: 4px; padding: 12px; margin-bottom: 10px; }
+  .violation-tag { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 12px; margin-right: 6px; }
+  .violation-tag.high { background: #fef0f0; color: #f56c6c; border: 1px solid #fbc4c4; }
+  .violation-tag.medium { background: #fdf6ec; color: #e6a23c; border: 1px solid #f5dab1; }
+  .violation-tag.low { background: #f0f9eb; color: #67c23a; border: 1px solid #c2e7b0; }
+  .badge-status { padding: 4px 10px; border-radius: 10px; font-size: 12px; }
+  .badge-status.passed { background: #f0f9eb; color: #67c23a; }
+  .badge-status.blocked { background: #fef0f0; color: #f56c6c; }
+  .badge-status.pending { background: #f4f4f5; color: #909399; }
+  .badge-status.failed { background: #fef0f0; color: #f56c6c; }
+  .el-menu { border-right: none !important; }
+  .footer-info { text-align: center; color: #909399; font-size: 12px; padding: 10px; }
+  .regex-tester { background: #fafafa; border: 1px solid #ebeef5; border-radius: 4px; padding: 12px; margin-top: 10px; }
+  .regex-tester textarea { width: 100%; min-height: 80px; font-family: Consolas, monospace; font-size: 13px; border: 1px solid #dcdfe6; border-radius: 4px; padding: 8px; resize: vertical; }
+  .regex-result { margin-top: 8px; font-family: Consolas, monospace; font-size: 13px; background: #1e1e1e; color: #d4d4d4; padding: 8px; border-radius: 4px; max-height: 200px; overflow: auto; }
+  .chart-card { background: #fff; border-radius: 6px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+  .chart-title { font-size: 14px; font-weight: 600; color: #303133; margin-bottom: 12px; padding-left: 8px; border-left: 3px solid #409eff; }
+  .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; }
+  .chart-container { width: 100%; height: 320px; }
+  .diff-panel { display: grid; grid-template-columns: 50px 1fr 50px 1fr; gap: 0; background: #1e1e1e; border-radius: 4px; overflow: hidden; }
+  .diff-panel .diff-head { background: #2d2d2d; padding: 8px 12px; font-size: 12px; font-weight: 600; color: #d4d4d4; text-align: center; border-bottom: 1px solid #3d3d3d; }
+  .diff-panel .diff-head.orig { color: #f56c6c; }
+  .diff-panel .diff-head.msk { color: #67c23a; }
+  .diff-panel .diff-linenum { color: #858585; padding: 4px 8px; font-size: 12px; font-family: Consolas, monospace; text-align: right; user-select: none; border-right: 1px solid #3d3d3d; }
+  .diff-panel .diff-linenum.right { border-left: 1px solid #3d3d3d; border-right: none; }
+  .diff-panel .diff-cell { padding: 4px 8px; font-family: Consolas, monospace; font-size: 13px; line-height: 1.6; word-break: break-all; white-space: pre-wrap; color: #d4d4d4; }
+  .diff-panel .diff-row { display: contents; }
+  .diff-panel .diff-row.changed .diff-cell { background: #2a1f1f; }
+  .diff-panel .diff-row.changed .diff-cell.right { background: #1f2a1f; }
+  .diff-panel .diff-row.changed .diff-linenum { background: #2a1f1f; color: #f56c6c; }
+  .diff-panel .diff-row.changed .diff-linenum.right { background: #1f2a1f; color: #67c23a; }
+  .diff-panel .diff-body { max-height: 480px; overflow: auto; grid-column: 1 / -1; display: grid; grid-template-columns: 50px 1fr 50px 1fr; }
+  .template-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+  .template-card { border: 1px solid #ebeef5; border-radius: 6px; padding: 14px; cursor: pointer; transition: all 0.2s; }
+  .template-card:hover { border-color: #409eff; box-shadow: 0 2px 8px rgba(64,158,255,0.15); }
+  .template-card .tpl-name { font-size: 15px; font-weight: 600; margin-bottom: 6px; color: #303133; }
+  .template-card .tpl-count { font-size: 12px; color: #909399; }
+  .template-card .tpl-preview { margin-top: 8px; font-size: 12px; color: #606266; }
+  .import-area { border: 2px dashed #d9d9d9; border-radius: 6px; padding: 30px; text-align: center; cursor: pointer; transition: all 0.3s; background: #fafafa; }
+  .import-area:hover, .import-area.dragover { border-color: #409eff; background: #ecf5ff; }
+  .progress-bar { height: 6px; background: #ebeef5; border-radius: 3px; overflow: hidden; margin-top: 8px; }
+  .progress-bar .bar-inner { height: 100%; background: linear-gradient(90deg, #409eff, #67c23a); transition: width 0.3s; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="layout">
+    <div class="header">
+      <span class="logo">🔒 日志脱敏审核系统</span>
+      <span class="user">管理员</span>
+    </div>
+    <div class="main">
+      <div class="sidebar">
+        <el-menu :default-active="activeMenu" @select="onMenuSelect">
+          <el-menu-item index="dashboard"><el-icon><i-ep-data-analysis /></el-icon><span>工作台</span></el-menu-item>
+          <el-menu-item index="upload"><el-icon><i-ep-upload /></el-icon><span>日志上传</span></el-menu-item>
+          <el-menu-item index="preview"><el-icon><i-ep-document /></el-icon><span>日志预览</span></el-menu-item>
+          <el-menu-item index="compare"><el-icon><i-ep-document-copy /></el-icon><span>日志对比</span></el-menu-item>
+          <el-menu-item index="mask"><el-icon><i-ep-lock /></el-icon><span>批量脱敏</span></el-menu-item>
+          <el-menu-item index="rules"><el-icon><i-ep-setting /></el-icon><span>脱敏规则</span></el-menu-item>
+          <el-menu-item index="audit"><el-icon><i-ep-document-checked /></el-icon><span>审核记录</span></el-menu-item>
+          <el-menu-item index="statistics"><el-icon><i-ep-pie-chart /></el-icon><span>统计分析</span></el-menu-item>
+        </el-menu>
+      </div>
+      <div class="content">
+        <dashboard-page v-if="activeMenu === 'dashboard'" @go="onMenuSelect"></dashboard-page>
+        <upload-page v-if="activeMenu === 'upload'" @preview="goPreview" @mask="goMask" @compare="goCompare"></upload-page>
+        <preview-page v-if="activeMenu === 'preview'" :audit-id="currentAuditId"></preview-page>
+        <compare-page v-if="activeMenu === 'compare'" :audit-id="currentAuditId"></compare-page>
+        <mask-page v-if="activeMenu === 'mask'" :audit-id="currentAuditId"></mask-page>
+        <rules-page v-if="activeMenu === 'rules'"></rules-page>
+        <audit-page v-if="activeMenu === 'audit'" @view="viewAudit" @compare="goCompare"></audit-page>
+        <statistics-page v-if="activeMenu === 'statistics'"></statistics-page>
+      </div>
+    </div>
+    <div class="footer-info">日志脱敏审核系统 v1.0 · 数据安全与合规</div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/vue@3.4.21/dist/vue.global.prod.js"></script>
+<script src="https://unpkg.com/element-plus@2.4.4/dist/index.full.min.js"></script>
+<script src="https://unpkg.com/@element-plus/icons-vue@2.3.1/dist/index.iife.min.js"></script>
+<script src="https://unpkg.com/echarts@5.4.3/dist/echarts.min.js"></script>
+<script>
+const { createApp, ref, reactive, computed, onMounted, watch, defineComponent } = Vue;
+const API_BASE = 'http://localhost:3000/api';
+
+function api(url, options = {}) {
+  return fetch(API_BASE + url, {
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    ...options
+  }).then(r => {
+    if (r.status === 413) throw new Error('文件过大');
+    return r.json();
+  }).then(d => {
+    if (d.code !== 0) throw new Error(d.message || '请求失败');
+    return d.data;
+  });
+}
+
+const DashboardPage = defineComponent({
+  emits: ['go'],
+  setup(props, { emit }) {
+    const stats = reactive({ total: 0, passed: 0, blocked: 0, violations: 0 });
+    const recent = ref([]);
+    const load = async () => {
+      try {
+        const data = await api('/logs/audit?pageSize=5');
+        recent.value = data.list || [];
+        stats.total = data.total || 0;
+        stats.passed = recent.value.filter(r => r.status === 'passed').length;
+        stats.blocked = recent.value.filter(r => r.status === 'blocked').length;
+        stats.violations = recent.value.reduce((s, r) => s + (r.violation_lines || 0), 0);
+      } catch (e) { console.error(e); }
+    };
+    onMounted(load);
+    return { stats, recent, load, emit };
+  },
+  template: `
+    <div>
+      <div class="stat-cards">
+        <div class="stat-card">
+          <div class="label">总审核次数</div>
+          <div class="value info">{{ stats.total }}</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">已通过</div>
+          <div class="value success">{{ stats.passed }}</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">已拦截</div>
+          <div class="value danger">{{ stats.blocked }}</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">违规条目</div>
+          <div class="value warning">{{ stats.violations }}</div>
+        </div>
+      </div>
+      <div class="page-card">
+        <div class="toolbar">
+          <h3 class="page-title" style="margin:0;">最近审核记录</h3>
+          <div class="spacer"></div>
+          <el-button type="primary" @click="emit('go','upload')">上传新日志</el-button>
+          <el-button @click="emit('go','audit')">查看全部</el-button>
+        </div>
+        <el-table :data="recent" stripe empty-text="暂无数据">
+          <el-table-column prop="id" label="ID" width="70" />
+          <el-table-column prop="file_name" label="文件名" />
+          <el-table-column prop="log_format" label="格式" width="90" />
+          <el-table-column prop="total_lines" label="总行数" width="90" />
+          <el-table-column label="状态" width="100">
+            <template #default="{row}">
+              <span :class="'badge-status ' + row.status">{{ {passed:'通过',blocked:'已拦截',pending:'待处理',failed:'失败'}[row.status] }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="created_at" label="时间" width="170" />
+        </el-table>
+      </div>
+    </div>
+  `
+});
+
+const UploadPage = defineComponent({
+  emits: ['preview', 'mask', 'compare'],
+  setup(props, { emit }) {
+    const formats = ['plain', 'json', 'csv', 'nginx', 'syslog', 'apache'];
+    const selectedFile = ref(null);
+    const format = ref('plain');
+    const autoDetect = ref(true);
+    const uploading = ref(false);
+    const uploadResult = ref(null);
+    const dragOver = ref(false);
+
+    const onFileChange = (file) => {
+      selectedFile.value = file;
+      uploadResult.value = null;
+    };
+    const onDrop = (e) => {
+      dragOver.value = false;
+      if (e.dataTransfer.files.length) onFileChange(e.dataTransfer.files[0]);
+    };
+    const upload = async () => {
+      if (!selectedFile.value) return ElementPlus.ElMessage.warning('请先选择日志文件');
+      uploading.value = true;
+      try {
+        const fd = new FormData();
+        fd.append('file', selectedFile.value);
+        if (!autoDetect.value) fd.append('format', format.value);
+        const res = await fetch(API_BASE + '/logs/upload', { method: 'POST', body: fd });
+        const d = await res.json();
+        if (d.code !== 0) throw new Error(d.message);
+        uploadResult.value = d.data;
+        ElementPlus.ElMessage.success('上传成功');
+      } catch (e) {
+        ElementPlus.ElMessage.error('上传失败: ' + e.message);
+      } finally {
+        uploading.value = false;
+      }
+    };
+    return { formats, selectedFile, format, autoDetect, uploading, uploadResult, dragOver, onFileChange, onDrop, upload, emit };
+  },
+  template: `
+    <div class="page-card">
+      <h2 class="page-title">日志上传</h2>
+      <div class="upload-area"
+           :class="{dragover: dragOver}"
+           @click="$refs.fileInput.click()"
+           @dragover.prevent="dragOver = true"
+           @dragleave="dragOver = false"
+           @drop.prevent="onDrop">
+        <input ref="fileInput" type="file" accept=".log,.txt,.json,.csv,.xml" style="display:none"
+               @change="onFileChange($event.target.files[0])" />
+        <div class="icon">📁</div>
+        <div class="tip" v-if="!selectedFile">点击或拖拽文件到此处上传</div>
+        <div class="tip" v-else>已选择: <b>{{ selectedFile.name }}</b> ({{ (selectedFile.size/1024).toFixed(1) }} KB)</div>
+        <div class="sub-tip">支持 .log / .txt / .json / .csv 文件，最大 20MB</div>
+      </div>
+
+      <div class="form-section" style="margin-top:20px;">
+        <div class="form-section-title">日志格式</div>
+        <el-radio-group v-model="autoDetect">
+          <el-radio :label="true">自动识别</el-radio>
+          <el-radio :label="false">手动指定</el-radio>
+        </el-radio-group>
+        <el-select v-if="!autoDetect" v-model="format" style="margin-left:12px;width:200px;">
+          <el-option v-for="f in formats" :key="f" :label="f" :value="f" />
+        </el-select>
+      </div>
+
+      <div class="toolbar">
+        <el-button type="primary" :loading="uploading" @click="upload">
+          {{ uploading ? '上传中...' : '开始上传' }}
+        </el-button>
+        <el-button v-if="uploadResult" type="success" @click="emit('preview', uploadResult.auditId)">预览日志</el-button>
+        <el-button v-if="uploadResult" type="warning" @click="emit('compare', uploadResult.auditId)">对比脱敏</el-button>
+        <el-button v-if="uploadResult" type="danger" @click="emit('mask', uploadResult.auditId)">执行脱敏</el-button>
+      </div>
+
+      <el-alert v-if="uploadResult" :title="'上传成功，记录ID: ' + uploadResult.auditId" type="success" :closable="false" style="margin-top:16px;">
+        <template #default>
+          <div>文件名: {{ uploadResult.fileName }} | 格式: {{ uploadResult.format }} | 总行数: {{ uploadResult.totalLines }}</div>
+        </template>
+      </el-alert>
+    </div>
+  `
+});
+
+const PreviewPage = defineComponent({
+  props: { auditId: { type: Number, default: null } },
+  setup(props) {
+    const auditId = ref(props.auditId);
+    const inputId = ref(props.auditId || '');
+    const format = ref('plain');
+    const lines = ref([]);
+    const page = ref(1);
+    const pageSize = 50;
+    const loading = ref(false);
+    const fileInfo = ref(null);
+    const formats = ['plain', 'json', 'csv', 'nginx', 'syslog', 'apache'];
+
+    const load = async () => {
+      if (!auditId.value) return;
+      loading.value = true;
+      try {
+        const data = await api(`/logs/preview?auditId=${auditId.value}&format=${format.value}&page=${page.value}&pageSize=${pageSize}`);
+        lines.value = data.lines || [];
+        fileInfo.value = { total: data.total, format: data.format };
+      } catch (e) {
+        ElementPlus.ElMessage.error(e.message);
+      } finally { loading.value = false; }
+    };
+    const search = () => {
+      auditId.value = Number(inputId.value);
+      page.value = 1;
+      load();
+    };
+    watch(() => props.auditId, (v) => { if (v) { auditId.value = v; inputId.value = v; load(); } });
+    onMounted(() => { if (auditId.value) load(); });
+    return { auditId, inputId, format, lines, page, pageSize, loading, fileInfo, formats, load, search };
+  },
+  template: `
+    <div class="page-card">
+      <h2 class="page-title">日志预览</h2>
+      <div class="toolbar">
+        <span>审核ID:</span>
+        <el-input-number v-model="inputId" :min="1" style="width:150px" @change="search" />
+        <span style="margin-left:10px;">格式:</span>
+        <el-select v-model="format" style="width:150px" @change="load">
+          <el-option v-for="f in formats" :key="f" :label="f" :value="f" />
+        </el-select>
+        <el-button type="primary" @click="load">刷新</el-button>
+        <div class="spacer"></div>
+        <el-pagination v-if="fileInfo" small layout="prev, pager, next"
+          :total="fileInfo.total" :page-size="pageSize" v-model:current-page="page" @current-change="load" />
+      </div>
+      <div class="log-preview" v-loading="loading">
+        <div v-if="!lines.length" style="color:#858585;text-align:center;padding:40px;">请输入审核ID查看日志内容</div>
+        <div v-for="line in lines" :key="line.lineNumber" class="line">
+          <span class="line-num">{{ line.lineNumber }}</span>
+          <span class="line-content">{{ line.raw }}</span>
+        </div>
+      </div>
+    </div>
+  `
+});
+
+const MaskPage = defineComponent({
+  props: { auditId: { type: Number, default: null } },
+  setup(props) {
+    const auditId = ref(props.auditId);
+    const inputId = ref(props.auditId || '');
+    const format = ref('plain');
+    const blockOnViolation = ref(true);
+    const masking = ref(false);
+    const result = ref(null);
+    const testContent = ref('');
+    const testResult = ref(null);
+    const testing = ref(false);
+    const formats = ['plain', 'json', 'csv', 'nginx', 'syslog', 'apache'];
+
+    const doMask = async () => {
+      if (!auditId.value) return ElementPlus.ElMessage.warning('请输入审核ID');
+      masking.value = true;
+      try {
+        result.value = await api('/logs/mask', {
+          method: 'POST',
+          body: JSON.stringify({ auditId: auditId.value, format: format.value, blockOnViolation: blockOnViolation.value })
+        });
+        ElementPlus.ElMessage.success('脱敏完成');
+      } catch (e) {
+        ElementPlus.ElMessage.error(e.message);
+      } finally { masking.value = false; }
+    };
+    const runTest = async () => {
+      if (!testContent.value.trim()) return ElementPlus.ElMessage.warning('请输入测试内容');
+      testing.value = true;
+      try {
+        testResult.value = await api('/logs/test', {
+          method: 'POST',
+          body: JSON.stringify({ content: testContent.value, format: format.value })
+        });
+      } catch (e) {
+        ElementPlus.ElMessage.error(e.message);
+      } finally { testing.value = false; }
+    };
+    watch(() => props.auditId, (v) => { if (v) { auditId.value = v; inputId.value = v; } });
+    onMounted(() => { if (props.auditId) { auditId.value = props.auditId; inputId.value = props.auditId; } });
+    return { auditId, inputId, format, blockOnViolation, masking, result, testContent, testResult, testing, formats, doMask, runTest };
+  },
+  template: `
+    <div>
+      <div class="page-card" style="margin-bottom:16px;">
+        <h2 class="page-title">批量脱敏</h2>
+        <div class="toolbar">
+          <span>审核ID:</span>
+          <el-input-number v-model="inputId" :min="1" style="width:150px" @change="auditId = inputId" />
+          <span style="margin-left:10px;">格式:</span>
+          <el-select v-model="format" style="width:150px">
+            <el-option v-for="f in formats" :key="f" :label="f" :value="f" />
+          </el-select>
+          <el-switch v-model="blockOnViolation" active-text="违规拦截" inactive-text="仅脱敏" />
+          <el-button type="primary" :loading="masking" @click="doMask">
+            {{ masking ? '脱敏中...' : '执行脱敏' }}
+          </el-button>
+        </div>
+        <el-alert v-if="result" :title="'脱敏状态: ' + result.status" :type="result.blocked ? 'error' : 'success'" :closable="false">
+          <template #default>
+            <div>总行数: {{ result.totalLines }} | 已脱敏: {{ result.maskedLines }} 行 | 违规条目: {{ result.violationCount }} | 高危: {{ result.highViolations }}</div>
+          </template>
+        </el-alert>
+      </div>
+
+      <div class="page-card">
+        <div class="form-section-title">脱敏测试（实时）</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div>
+            <div style="font-size:13px;color:#606266;margin-bottom:6px;">原始内容</div>
+            <el-input type="textarea" v-model="testContent" :rows="6" placeholder="输入日志内容进行脱敏测试..." />
+          </div>
+          <div>
+            <div style="font-size:13px;color:#606266;margin-bottom:6px;">脱敏结果</div>
+            <div class="log-preview" style="min-height:150px;margin:0;">
+              <div v-if="!testResult" style="color:#858585;">点击测试查看结果</div>
+              <pre v-else style="margin:0;white-space:pre-wrap;">{{ testResult.maskedContent }}</pre>
+            </div>
+          </div>
+        </div>
+        <div class="toolbar">
+          <el-button type="primary" :loading="testing" @click="runTest">测试脱敏</el-button>
+          <el-tag v-if="testResult" type="success">共 {{ testResult.totalLines }} 行，{{ testResult.maskedLines }} 行被脱敏</el-tag>
+        </div>
+      </div>
+    </div>
+  `
+});
+
+const RulesPage = defineComponent({
+  setup() {
+    const list = ref([]);
+    const total = ref(0);
+    const page = ref(1);
+    const pageSize = ref(20);
+    const keyword = ref('');
+    const enabledFilter = ref('');
+    const loading = ref(false);
+    const dialogVisible = ref(false);
+    const editing = ref(null);
+    const isNew = ref(true);
+    const ruleTypes = [{ label: '正则表达式', value: 'regex' }, { label: '关键字', value: 'keyword' }, { label: '固定值', value: 'fixed' }];
+    const selectedIds = ref([]);
+    const templateVisible = ref(false);
+    const importVisible = ref(false);
+    const templates = ref([]);
+    const importData = ref(null);
+    const importFileName = ref('');
+    const importOverwrite = ref(false);
+
+    const load = async () => {
+      loading.value = true;
+      try {
+        let url = `/rules?page=${page.value}&pageSize=${pageSize.value}`;
+        if (keyword.value) url += `&keyword=${encodeURIComponent(keyword.value)}`;
+        if (enabledFilter.value !== '') url += `&enabled=${enabledFilter.value}`;
+        const data = await api(url);
+        list.value = (data.list || []).map(r => ({
+          ...r,
+          case_sensitive: !!r.case_sensitive,
+          enabled: !!r.enabled
+        }));
+        total.value = data.total || 0;
+      } catch (e) { ElementPlus.ElMessage.error(e.message); }
+      finally { loading.value = false; }
+    };
+    const openNew = () => {
+      isNew.value = true;
+      editing.value = { name: '', description: '', rule_type: 'regex', pattern: '', replacement: '****', case_sensitive: false, enabled: true, priority: 50, scope: 'all' };
+      dialogVisible.value = true;
+    };
+    const openEdit = (row) => {
+      isNew.value = false;
+      editing.value = { ...row };
+      dialogVisible.value = true;
+    };
+    const save = async () => {
+      try {
+        if (isNew.value) {
+          await api('/rules', { method: 'POST', body: JSON.stringify(editing.value) });
+          ElementPlus.ElMessage.success('规则创建成功');
+        } else {
+          await api('/rules/' + editing.value.id, { method: 'PUT', body: JSON.stringify(editing.value) });
+          ElementPlus.ElMessage.success('规则更新成功');
+        }
+        dialogVisible.value = false;
+        load();
+      } catch (e) { ElementPlus.ElMessage.error(e.message); }
+    };
+    const remove = async (row) => {
+      try {
+        await ElementPlus.ElMessageBox.confirm('确定要删除该规则吗？', '提示', { type: 'warning' });
+        await api('/rules/' + row.id, { method: 'DELETE' });
+        ElementPlus.ElMessage.success('已删除');
+        load();
+      } catch (e) { if (e !== 'cancel') ElementPlus.ElMessage.error(e.message); }
+    };
+    const toggle = async (row) => {
+      await api('/rules/' + row.id + '/toggle', { method: 'PUT', body: JSON.stringify({ enabled: !row.enabled }) });
+      load();
+    };
+    const openTemplate = async () => {
+      try {
+        const data = await api('/rules/templates');
+        templates.value = data || [];
+        templateVisible.value = true;
+      } catch (e) { ElementPlus.ElMessage.error(e.message); }
+    };
+    const applyTemplate = async (tpl) => {
+      try {
+        await ElementPlus.ElMessageBox.confirm(
+          `确定要导入「${tpl.category}」模板的 ${tpl.rules.length} 条规则吗？${importOverwrite.value ? '这将清空现有规则。' : '将追加到现有规则。'}`,
+          '导入模板',
+          { type: 'info' }
+        );
+        const result = await api('/rules/import', {
+          method: 'POST',
+          body: JSON.stringify({ rules: tpl.rules, overwrite: importOverwrite.value })
+        });
+        ElementPlus.ElMessage.success(`导入成功：${result.success} 条，失败：${result.failed} 条`);
+        templateVisible.value = false;
+        load();
+      } catch (e) { if (e !== 'cancel') ElementPlus.ElMessage.error(e.message); }
+    };
+    const openImport = () => {
+      importData.value = null;
+      importFileName.value = '';
+      importOverwrite.value = false;
+      importVisible.value = true;
+    };
+    const onImportFile = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      importFileName.value = file.name;
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const json = JSON.parse(evt.target.result);
+          const rules = Array.isArray(json) ? json : json.rules;
+          if (!Array.isArray(rules)) throw new Error('JSON 格式不正确，需要规则数组');
+          importData.value = rules;
+          ElementPlus.ElMessage.success(`已解析 ${rules.length} 条规则`);
+        } catch (err) {
+          ElementPlus.ElMessage.error('解析失败: ' + err.message);
+          importData.value = null;
+        }
+      };
+      reader.readAsText(file);
+    };
+    const doImport = async () => {
+      if (!importData.value) return ElementPlus.ElMessage.warning('请先选择文件');
+      try {
+        const result = await api('/rules/import', {
+          method: 'POST',
+          body: JSON.stringify({ rules: importData.value, overwrite: importOverwrite.value })
+        });
+        ElementPlus.ElMessage.success(`导入成功：${result.success} 条，失败：${result.failed} 条`);
+        importVisible.value = false;
+        load();
+      } catch (e) { ElementPlus.ElMessage.error(e.message); }
+    };
+    const exportRules = async () => {
+      try {
+        const data = await api('/rules/export');
+        const blob = new Blob([JSON.stringify(data.rules, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `mask-rules-${Date.now()}.json`; a.click();
+        URL.revokeObjectURL(url);
+        ElementPlus.ElMessage.success(`已导出 ${data.count} 条规则`);
+      } catch (e) { ElementPlus.ElMessage.error(e.message); }
+    };
+    const batchToggle = async (enabled) => {
+      if (selectedIds.value.length === 0) return ElementPlus.ElMessage.warning('请先选择规则');
+      try {
+        await api('/rules/batch/toggle', { method: 'POST', body: JSON.stringify({ ids: selectedIds.value, enabled }) });
+        ElementPlus.ElMessage.success(`已${enabled ? '启用' : '禁用'} ${selectedIds.value.length} 条规则`);
+        selectedIds.value = [];
+        load();
+      } catch (e) { ElementPlus.ElMessage.error(e.message); }
+    };
+    const batchDelete = async () => {
+      if (selectedIds.value.length === 0) return ElementPlus.ElMessage.warning('请先选择规则');
+      try {
+        await ElementPlus.ElMessageBox.confirm(`确定删除选中的 ${selectedIds.value.length} 条规则？`, '批量删除', { type: 'warning' });
+        await api('/rules/batch/delete', { method: 'POST', body: JSON.stringify({ ids: selectedIds.value }) });
+        ElementPlus.ElMessage.success('批量删除成功');
+        selectedIds.value = [];
+        load();
+      } catch (e) { if (e !== 'cancel') ElementPlus.ElMessage.error(e.message); }
+    };
+    const handleSelectionChange = (rows) => { selectedIds.value = rows.map(r => r.id); };
+
+    onMounted(load);
+    return { list, total, page, pageSize, keyword, enabledFilter, loading, dialogVisible, editing, isNew, ruleTypes,
+      selectedIds, templateVisible, importVisible, templates, importData, importFileName, importOverwrite,
+      load, openNew, openEdit, save, remove, toggle, openTemplate, applyTemplate, openImport, onImportFile, doImport,
+      exportRules, batchToggle, batchDelete, handleSelectionChange };
+  },
+  template: `
+    <div class="page-card">
+      <h2 class="page-title">脱敏规则配置</h2>
+      <div class="toolbar">
+        <el-input v-model="keyword" placeholder="搜索规则名称/描述" clearable style="width:240px" @keyup.enter="load" />
+        <el-select v-model="enabledFilter" placeholder="状态筛选" clearable style="width:140px">
+          <el-option label="已启用" value="1" />
+          <el-option label="已禁用" value="0" />
+        </el-select>
+        <el-button type="primary" @click="load">查询</el-button>
+        <div class="spacer"></div>
+        <el-button type="success" @click="openNew">+ 新建</el-button>
+        <el-dropdown trigger="click">
+          <el-button>模板导入 <el-icon class="el-icon--right"><i-ep-arrow-down /></el-icon></el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item @click="openTemplate">从内置模板选择</el-dropdown-item>
+              <el-dropdown-item @click="openImport">导入 JSON 文件</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+        <el-button @click="exportRules">导出</el-button>
+        <el-dropdown v-if="selectedIds.length > 0" trigger="click">
+          <el-button type="warning">批量操作 ({{ selectedIds.length }}) <el-icon class="el-icon--right"><i-ep-arrow-down /></el-icon></el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item @click="batchToggle(true)">批量启用</el-dropdown-item>
+              <el-dropdown-item @click="batchToggle(false)">批量禁用</el-dropdown-item>
+              <el-dropdown-item divided @click="batchDelete" style="color:#f56c6c;">批量删除</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+      </div>
+      <el-table :data="list" stripe v-loading="loading" @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="45" />
+        <el-table-column prop="id" label="ID" width="70" />
+        <el-table-column prop="name" label="名称" width="140" />
+        <el-table-column prop="description" label="描述" show-overflow-tooltip />
+        <el-table-column label="类型" width="90">
+          <template #default="{row}"><el-tag size="small">{{ {regex:'正则',keyword:'关键字',fixed:'固定'}[row.rule_type] }}</el-tag></template>
+        </el-table-column>
+        <el-table-column prop="pattern" label="匹配规则" show-overflow-tooltip width="220" />
+        <el-table-column prop="replacement" label="替换为" width="140" />
+        <el-table-column prop="priority" label="优先级" width="80" />
+        <el-table-column label="状态" width="90">
+          <template #default="{row}">
+            <el-switch v-model="row.enabled" @change="toggle(row)" size="small" />
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="160" fixed="right">
+          <template #default="{row}">
+            <el-button size="small" @click="openEdit(row)">编辑</el-button>
+            <el-button size="small" type="danger" @click="remove(row)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination style="margin-top:12px;justify-content:flex-end;display:flex;"
+        layout="total, prev, pager, next" :total="total" :page-size="pageSize" v-model:current-page="page" @current-change="load" />
+
+      <el-dialog v-model="dialogVisible" :title="isNew ? '新建规则' : '编辑规则'" width="600px">
+        <el-form :model="editing" label-width="100px" v-if="editing">
+          <el-form-item label="规则名称"><el-input v-model="editing.name" maxlength="128" /></el-form-item>
+          <el-form-item label="描述"><el-input v-model="editing.description" maxlength="512" /></el-form-item>
+          <el-form-item label="规则类型">
+            <el-select v-model="editing.rule_type">
+              <el-option v-for="t in ruleTypes" :key="t.value" :label="t.label" :value="t.value" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="匹配规则">
+            <el-input v-model="editing.pattern" type="textarea" :rows="2" maxlength="1024" placeholder="正则表达式如: 1[3-9]\\d{9}" />
+          </el-form-item>
+          <el-form-item label="替换内容">
+            <el-input v-model="editing.replacement" maxlength="256" placeholder="如: **** 或 $1=****" />
+          </el-form-item>
+          <el-form-item label="优先级">
+            <el-input-number v-model="editing.priority" :min="0" :max="999" />
+          </el-form-item>
+          <el-form-item label="区分大小写"><el-switch v-model="editing.case_sensitive" /></el-form-item>
+          <el-form-item label="启用"><el-switch v-model="editing.enabled" /></el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="save">保存</el-button>
+        </template>
+      </el-dialog>
+
+      <el-dialog v-model="templateVisible" title="选择脱敏模板" width="700px">
+        <div class="toolbar">
+          <el-switch v-model="importOverwrite" active-text="覆盖现有" inactive-text="追加导入" />
+        </div>
+        <div class="template-list">
+          <div v-for="tpl in templates" :key="tpl.category" class="template-card" @click="applyTemplate(tpl)">
+            <div class="tpl-name">{{ tpl.category }}</div>
+            <div class="tpl-count">共 {{ tpl.rules.length }} 条规则</div>
+            <div class="tpl-preview">{{ tpl.rules.map(r => r.name).join('、') }}</div>
+          </div>
+        </div>
+      </el-dialog>
+
+      <el-dialog v-model="importVisible" title="导入规则 JSON" width="500px">
+        <div class="import-area" @click="$refs.importInput.click()">
+          <input ref="importInput" type="file" accept=".json" style="display:none" @change="onImportFile" />
+          <div style="font-size:36px;">📄</div>
+          <div class="tip" v-if="!importFileName">点击选择 JSON 文件</div>
+          <div class="tip" v-else>已选: <b>{{ importFileName }}</b></div>
+          <div class="sub-tip" v-if="importData">已解析 {{ importData.length }} 条规则</div>
+        </div>
+        <div class="toolbar" style="margin-top:16px;">
+          <el-switch v-model="importOverwrite" active-text="覆盖现有" inactive-text="追加导入" />
+          <div class="spacer"></div>
+          <el-button @click="importVisible = false">取消</el-button>
+          <el-button type="primary" @click="doImport" :disabled="!importData">导入</el-button>
+        </div>
+      </el-dialog>
+    </div>
+  `
+});
+
+const AuditPage = defineComponent({
+  emits: ['view', 'compare'],
+  setup(props, { emit }) {
+    const list = ref([]);
+    const total = ref(0);
+    const page = ref(1);
+    const pageSize = ref(20);
+    const status = ref('');
+    const keyword = ref('');
+    const formatFilter = ref('');
+    const loading = ref(false);
+    const detailVisible = ref(false);
+    const currentDetail = ref(null);
+    const detailViolations = ref([]);
+    const formats = ['plain', 'json', 'csv', 'nginx', 'syslog', 'apache'];
+
+    const load = async () => {
+      loading.value = true;
+      try {
+        let url = `/logs/audit?page=${page.value}&pageSize=${pageSize.value}`;
+        if (status.value) url += `&status=${status.value}`;
+        if (keyword.value) url += `&keyword=${encodeURIComponent(keyword.value)}`;
+        if (formatFilter.value) url += `&format=${formatFilter.value}`;
+        const data = await api(url);
+        list.value = data.list || [];
+        total.value = data.total || 0;
+      } catch (e) { ElementPlus.ElMessage.error(e.message); }
+      finally { loading.value = false; }
+    };
+    const viewDetail = async (row) => {
+      try {
+        currentDetail.value = row;
+        const data = await api('/logs/audit/' + row.id);
+        detailViolations.value = data.violations || [];
+        detailVisible.value = true;
+      } catch (e) { ElementPlus.ElMessage.error(e.message); }
+    };
+    const download = (row) => {
+      if (row.blocked) return ElementPlus.ElMessage.warning('该日志已被拦截，禁止下载');
+      if (!row.masked_path) return ElementPlus.ElMessage.warning('脱敏文件不存在');
+      window.open(API_BASE + '/logs/audit/' + row.id + '/download', '_blank');
+    };
+    const goCompare = (row) => { emit('compare', row.id); };
+    onMounted(load);
+    return { list, total, page, pageSize, status, keyword, formatFilter, loading, detailVisible, currentDetail, detailViolations, formats, load, viewDetail, download, goCompare, emit };
+  },
+  template: `
+    <div class="page-card">
+      <h2 class="page-title">审核记录</h2>
+      <div class="toolbar">
+        <el-input v-model="keyword" placeholder="搜索文件名" clearable style="width:200px" @keyup.enter="load" />
+        <el-select v-model="formatFilter" placeholder="格式" clearable style="width:120px">
+          <el-option v-for="f in formats" :key="f" :label="f" :value="f" />
+        </el-select>
+        <el-select v-model="status" placeholder="状态" clearable style="width:120px">
+          <el-option label="待处理" value="pending" />
+          <el-option label="已通过" value="passed" />
+          <el-option label="已拦截" value="blocked" />
+          <el-option label="失败" value="failed" />
+        </el-select>
+        <el-button type="primary" @click="load">查询</el-button>
+      </div>
+      <el-table :data="list" stripe v-loading="loading">
+        <el-table-column prop="id" label="ID" width="70" />
+        <el-table-column prop="file_name" label="文件名" show-overflow-tooltip />
+        <el-table-column prop="log_format" label="格式" width="80" />
+        <el-table-column prop="total_lines" label="行数" width="70" />
+        <el-table-column prop="masked_lines" label="脱敏" width="70" />
+        <el-table-column prop="violation_lines" label="违规" width="70" />
+        <el-table-column label="状态" width="90">
+          <template #default="{row}">
+            <span :class="'badge-status ' + row.status">{{ {passed:'通过',blocked:'拦截',pending:'待处理',failed:'失败'}[row.status] }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="created_at" label="时间" width="160" />
+        <el-table-column label="操作" width="220" fixed="right">
+          <template #default="{row}">
+            <el-button size="small" type="primary" @click="viewDetail(row)">详情</el-button>
+            <el-button size="small" type="warning" @click="goCompare(row)">对比</el-button>
+            <el-button size="small" type="success" :disabled="row.blocked || row.status!=='passed'" @click="download(row)">下载</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination style="margin-top:12px;justify-content:flex-end;display:flex;"
+        layout="total, prev, pager, next" :total="total" :page-size="pageSize" v-model:current-page="page" @current-change="load" />
+
+      <el-dialog v-model="detailVisible" title="审核详情" width="800px" v-if="currentDetail">
+        <el-descriptions :column="2" border size="small">
+          <el-descriptions-item label="ID">{{ currentDetail.id }}</el-descriptions-item>
+          <el-descriptions-item label="文件名">{{ currentDetail.file_name }}</el-descriptions-item>
+          <el-descriptions-item label="格式">{{ currentDetail.log_format }}</el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <span :class="'badge-status ' + currentDetail.status">{{ {passed:'通过',blocked:'拦截',pending:'待处理',failed:'失败'}[currentDetail.status] }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="总行数">{{ currentDetail.total_lines }}</el-descriptions-item>
+          <el-descriptions-item label="脱敏行">{{ currentDetail.masked_lines }}</el-descriptions-item>
+          <el-descriptions-item label="违规条目">{{ currentDetail.violation_lines }}</el-descriptions-item>
+          <el-descriptions-item label="是否拦截">{{ currentDetail.blocked ? '是' : '否' }}</el-descriptions-item>
+          <el-descriptions-item label="创建时间">{{ currentDetail.created_at }}</el-descriptions-item>
+          <el-descriptions-item label="操作人">{{ currentDetail.operator }}</el-descriptions-item>
+        </el-descriptions>
+        <div class="form-section-title" style="margin-top:16px;">违规明细 ({{ detailViolations.length }})</div>
+        <el-table :data="detailViolations" size="small" max-height="320" border>
+          <el-table-column prop="line_number" label="行号" width="70" />
+          <el-table-column prop="rule_name" label="命中规则" width="120" />
+          <el-table-column label="严重程度" width="90">
+            <template #default="{row}"><span :class="'violation-tag ' + row.severity">{{ row.severity }}</span></template>
+          </el-table-column>
+          <el-table-column prop="matched_text" label="匹配内容" show-overflow-tooltip />
+          <el-table-column prop="masked_text" label="替换结果" width="140" />
+        </el-table>
+      </el-dialog>
+    </div>
+  `
+});
+
+const ComparePage = defineComponent({
+  props: { auditId: { type: Number, default: null } },
+  setup(props) {
+    const auditId = ref(props.auditId);
+    const inputId = ref(props.auditId || '');
+    const format = ref('plain');
+    const page = ref(1);
+    const pageSize = 50;
+    const comparisons = ref([]);
+    const total = ref(0);
+    const loading = ref(false);
+    const changedCount = ref(0);
+    const formats = ['plain', 'json', 'csv', 'nginx', 'syslog', 'apache'];
+    const showChangedOnly = ref(false);
+
+    const load = async () => {
+      if (!auditId.value) return;
+      loading.value = true;
+      try {
+        const data = await api(`/logs/compare?auditId=${auditId.value}&format=${format.value}&page=${page.value}&pageSize=${pageSize}`);
+        comparisons.value = data.comparisons || [];
+        total.value = data.total || 0;
+        changedCount.value = data.changedCount || 0;
+      } catch (e) { ElementPlus.ElMessage.error(e.message); }
+      finally { loading.value = false; }
+    };
+    const search = () => { auditId.value = Number(inputId.value); page.value = 1; load(); };
+    const filtered = computed(() => showChangedOnly.value ? comparisons.value.filter(c => c.changed) : comparisons.value);
+    watch(() => props.auditId, (v) => { if (v) { auditId.value = v; inputId.value = v; load(); } });
+    onMounted(() => { if (auditId.value) load(); });
+    return { auditId, inputId, format, page, pageSize, comparisons, total, loading, changedCount, formats, showChangedOnly, filtered, load, search };
+  },
+  template: `
+    <div class="page-card">
+      <h2 class="page-title">日志对比预览</h2>
+      <div class="toolbar">
+        <span>审核ID:</span>
+        <el-input-number v-model="inputId" :min="1" style="width:150px" @change="search" />
+        <span style="margin-left:10px;">格式:</span>
+        <el-select v-model="format" style="width:150px" @change="load">
+          <el-option v-for="f in formats" :key="f" :label="f" :value="f" />
+        </el-select>
+        <el-switch v-model="showChangedOnly" active-text="仅看变更" inactive-text="全部行" />
+        <el-button type="primary" @click="load">刷新</el-button>
+        <div class="spacer"></div>
+        <el-tag v-if="changedCount > 0" type="warning">本页 {{ comparisons.length }} 行，其中 {{ changedCount }} 行被脱敏</el-tag>
+        <el-pagination v-if="total" small layout="prev, pager, next"
+          :total="total" :page-size="pageSize" v-model:current-page="page" @current-change="load" />
+      </div>
+      <div v-loading="loading">
+        <div v-if="!comparisons.length" style="text-align:center;padding:40px;color:#909399;">请输入审核ID查看对比内容</div>
+        <div v-else class="diff-panel" style="display:block;">
+          <div style="display:grid;grid-template-columns:50px 1fr 50px 1fr;">
+            <div class="diff-head">行</div>
+            <div class="diff-head orig">原始内容</div>
+            <div class="diff-head">行</div>
+            <div class="diff-head msk">脱敏内容</div>
+          </div>
+          <div class="diff-body">
+            <template v-for="c in filtered" :key="c.lineNumber">
+              <div :class="['diff-row', {changed: c.changed}]">
+                <div class="diff-linenum">{{ c.lineNumber }}</div>
+                <div class="diff-cell">{{ c.original }}</div>
+                <div class="diff-linenum right">{{ c.lineNumber }}</div>
+                <div class="diff-cell right">{{ c.masked }}</div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+});
+
+const StatisticsPage = defineComponent({
+  setup() {
+    const days = ref(30);
+    const groupBy = ref('day');
+    const loading = ref(false);
+    const data = ref(null);
+    const trendChart = ref(null);
+    const statusChart = ref(null);
+    const severityChart = ref(null);
+    const topRulesChart = ref(null);
+    const formatChart = ref(null);
+
+    const load = async () => {
+      loading.value = true;
+      try {
+        const d = await api(`/logs/statistics?days=${days.value}&groupBy=${groupBy.value}`);
+        data.value = d;
+        renderCharts(d);
+      } catch (e) { ElementPlus.ElMessage.error(e.message); }
+      finally { loading.value = false; }
+    };
+
+    const renderCharts = (d) => {
+      if (trendChart.value) trendChart.value.dispose();
+      const tc = echarts.init(document.getElementById('chart-trend'));
+      tc.setOption({
+        tooltip: { trigger: 'axis' },
+        legend: { data: ['审核次数', '通过', '拦截', '违规条目'] },
+        grid: { left: 50, right: 20, top: 40, bottom: 30 },
+        xAxis: { type: 'category', data: (d.trend || []).map(t => t.period) },
+        yAxis: { type: 'value' },
+        series: [
+          { name: '审核次数', type: 'line', smooth: true, data: (d.trend || []).map(t => t.total), itemStyle: { color: '#409eff' } },
+          { name: '通过', type: 'line', smooth: true, data: (d.trend || []).map(t => t.passed), itemStyle: { color: '#67c23a' } },
+          { name: '拦截', type: 'line', smooth: true, data: (d.trend || []).map(t => t.blocked), itemStyle: { color: '#f56c6c' } },
+          { name: '违规条目', type: 'bar', data: (d.trend || []).map(t => t.violations), itemStyle: { color: '#e6a23c' } }
+        ]
+      });
+      trendChart.value = tc;
+
+      if (statusChart.value) statusChart.value.dispose();
+      const sc = echarts.init(document.getElementById('chart-status'));
+      const statusData = (d.byStatus || []).map(s => ({
+        name: { passed: '通过', blocked: '拦截', pending: '待处理', failed: '失败' }[s.status] || s.status,
+        value: s.count
+      }));
+      sc.setOption({
+        tooltip: { trigger: 'item' },
+        legend: { orient: 'vertical', left: 'left' },
+        series: [{
+          type: 'pie', radius: ['40%', '70%'], center: ['55%', '50%'],
+          data: statusData,
+          label: { formatter: '{b}: {c}' },
+          itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 }
+        }]
+      });
+      statusChart.value = sc;
+
+      if (severityChart.value) severityChart.value.dispose();
+      const svc = echarts.init(document.getElementById('chart-severity'));
+      const sevData = (d.bySeverity || []).map(s => ({
+        name: { high: '高危', medium: '中危', low: '低危' }[s.severity] || s.severity,
+        value: s.count
+      }));
+      svc.setOption({
+        tooltip: { trigger: 'item' },
+        series: [{
+          type: 'pie', radius: '70%',
+          data: sevData,
+          color: ['#f56c6c', '#e6a23c', '#67c23a'],
+          label: { formatter: '{b}: {c} ({d}%)' }
+        }]
+      });
+      severityChart.value = svc;
+
+      if (topRulesChart.value) topRulesChart.value.dispose();
+      const trc = echarts.init(document.getElementById('chart-toprules'));
+      trc.setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        grid: { left: 100, right: 20, top: 10, bottom: 20 },
+        xAxis: { type: 'value' },
+        yAxis: { type: 'category', data: (d.topRules || []).map(r => r.rule_name).reverse() },
+        series: [{
+          type: 'bar',
+          data: (d.topRules || []).map(r => r.hit_count).reverse(),
+          itemStyle: { color: '#409eff', borderRadius: [0, 4, 4, 0] },
+          label: { show: true, position: 'right' }
+        }]
+      });
+      topRulesChart.value = trc;
+
+      if (formatChart.value) formatChart.value.dispose();
+      const fc = echarts.init(document.getElementById('chart-format'));
+      fc.setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        legend: { data: ['审核次数', '脱敏行', '违规条目'] },
+        grid: { left: 50, right: 20, top: 40, bottom: 30 },
+        xAxis: { type: 'category', data: (d.byFormat || []).map(f => f.format) },
+        yAxis: { type: 'value' },
+        series: [
+          { name: '审核次数', type: 'bar', data: (d.byFormat || []).map(f => f.count), itemStyle: { color: '#409eff' } },
+          { name: '脱敏行', type: 'bar', data: (d.byFormat || []).map(f => f.masked), itemStyle: { color: '#67c23a' } },
+          { name: '违规条目', type: 'bar', data: (d.byFormat || []).map(f => f.violations), itemStyle: { color: '#e6a23c' } }
+        ]
+      });
+      formatChart.value = fc;
+    };
+
+    onMounted(load);
+    window.addEventListener('resize', () => {
+      [trendChart, statusChart, severityChart, topRulesChart, formatChart].forEach(c => c.value && c.value.resize());
+    });
+
+    return { days, groupBy, loading, data, load };
+  },
+  template: `
+    <div>
+      <div class="page-card" style="margin-bottom:16px;">
+        <h2 class="page-title">违规统计分析</h2>
+        <div class="toolbar">
+          <span>时间范围:</span>
+          <el-select v-model="days" style="width:120px">
+            <el-option label="最近7天" :value="7" />
+            <el-option label="最近30天" :value="30" />
+            <el-option label="最近90天" :value="90" />
+            <el-option label="最近180天" :value="180" />
+          </el-select>
+          <span style="margin-left:10px;">分组:</span>
+          <el-select v-model="groupBy" style="width:120px">
+            <el-option label="按天" value="day" />
+            <el-option label="按小时" value="hour" />
+          </el-select>
+          <el-button type="primary" :loading="loading" @click="load">刷新数据</el-button>
+        </div>
+        <div v-if="data" class="stat-cards" style="margin-top:0;">
+          <div class="stat-card">
+            <div class="label">总审核次数</div>
+            <div class="value info">{{ data.summary.total_audits || 0 }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">通过</div>
+            <div class="value success">{{ data.summary.total_passed || 0 }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">拦截</div>
+            <div class="value danger">{{ data.summary.total_blocked || 0 }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">违规条目</div>
+            <div class="value warning">{{ data.summary.total_violations || 0 }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-title">审核趋势</div>
+          <div id="chart-trend" class="chart-container"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">审核状态分布</div>
+          <div id="chart-status" class="chart-container"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">违规严重程度分布</div>
+          <div id="chart-severity" class="chart-container"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Top 15 命中规则</div>
+          <div id="chart-toprules" class="chart-container"></div>
+        </div>
+        <div class="chart-card" style="grid-column: 1 / -1;">
+          <div class="chart-title">日志格式分布</div>
+          <div id="chart-format" class="chart-container"></div>
+        </div>
+      </div>
+    </div>
+  `
+});
+
+const App = {
+  components: { DashboardPage, UploadPage, PreviewPage, ComparePage, MaskPage, RulesPage, AuditPage, StatisticsPage },
+  setup() {
+    const activeMenu = ref('dashboard');
+    const currentAuditId = ref(null);
+    const onMenuSelect = (idx) => { activeMenu.value = idx; currentAuditId.value = null; };
+    const goPreview = (id) => { currentAuditId.value = id; activeMenu.value = 'preview'; };
+    const goMask = (id) => { currentAuditId.value = id; activeMenu.value = 'mask'; };
+    const goCompare = (id) => { currentAuditId.value = id; activeMenu.value = 'compare'; };
+    const viewAudit = (row) => { activeMenu.value = 'audit'; };
+    return { activeMenu, currentAuditId, onMenuSelect, goPreview, goMask, goCompare, viewAudit };
+  }
+};
+
+const app = createApp(App);
+app.use(ElementPlus);
+for (const [key, comp] of Object.entries(ElementPlusIconsVue)) {
+  app.component('i-ep-' + key.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, ''), comp);
+}
+app.mount('#app');
+</script>
+</body>
+</html>
