@@ -1,0 +1,30 @@
+# Go
+server/bin/
+server/*.exe
+server/*.exe~
+server/*.dll
+server/*.so
+server/*.dylib
+server/*.test
+server/*.out
+server/go.work
+server/go.work.sum
+
+# Environment
+server/.env
+
+# Node
+client/node_modules/
+client/dist/
+client/.env
+client/.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
