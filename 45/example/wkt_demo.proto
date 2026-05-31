@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package example.wkt;
+
+option go_package = "github.com/grpctest/grpctest/example/wkt";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/struct.proto";
+
+message CreateTaskRequest {
+  string name = 1;
+  google.protobuf.Timestamp created_at = 2;
+  google.protobuf.Duration ttl = 3;
+  google.protobuf.Struct metadata = 4;
+}
+
+message CreateTaskResponse {
+  string id = 1;
+  string name = 2;
+  google.protobuf.Timestamp created_at = 3;
+  google.protobuf.Duration ttl = 4;
+  google.protobuf.Struct metadata = 5;
+}
+
+service TaskService {
+  rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
+}

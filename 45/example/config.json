@@ -1,0 +1,43 @@
+{
+  "target": {
+    "address": "localhost:50051",
+    "insecure": true,
+    "timeout": "10s",
+    "proto_files": ["example/user.proto"],
+    "import_paths": ["."]
+  },
+  "steps": [
+    {
+      "id": "login",
+      "service": "example.user.AuthService",
+      "method": "Login",
+      "request": {
+        "username": "admin",
+        "password": "secret"
+      },
+      "assertions": [
+        { "field": "token", "op": "exists" },
+        { "field": "token", "op": "type", "expected": "string" }
+      ]
+    },
+    {
+      "id": "get_user",
+      "service": "example.user.UserService",
+      "method": "GetUser",
+      "depends_on": ["login"],
+      "metadata": {
+        "authorization": "Bearer ${login.token}"
+      },
+      "request": {
+        "id": "1"
+      },
+      "assertions": [
+        { "field": "user.id", "op": "eq", "expected": "1" },
+        { "field": "user.name", "op": "eq", "expected": "张三" },
+        { "field": "user.age", "op": "gte", "expected": 0 },
+        { "field": "user.roles", "op": "len", "expected": 2 },
+        { "field": "user.email", "op": "regex", "expected": ".+@.+" }
+      ]
+    }
+  ]
+}

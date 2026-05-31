@@ -1,0 +1,31 @@
+{
+  "target": {
+    "address": "localhost:50051",
+    "insecure": true,
+    "timeout": "10s",
+    "use_reflection": true,
+    "_comment": "When use_reflection is true, proto_files can be omitted and the schema is fetched from the server"
+  },
+  "steps": [
+    {
+      "id": "create_task",
+      "service": "example.wkt.TaskService",
+      "method": "CreateTask",
+      "request": {
+        "name": "demo-task",
+        "createdAt": "2024-01-02T15:04:05Z",
+        "ttl": "30s",
+        "metadata": {
+          "priority": "high",
+          "tags": ["alpha", "beta"]
+        }
+      },
+      "assertions": [
+        { "field": "name", "op": "eq", "expected": "demo-task" },
+        { "field": "createdAt", "op": "exists" },
+        { "field": "metadata.priority", "op": "eq", "expected": "high" },
+        { "field": "metadata.tags", "op": "len", "expected": 2 }
+      ]
+    }
+  ]
+}

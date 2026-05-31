@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package example.user;
+
+option go_package = "github.com/grpctest/grpctest/example/user";
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  string token = 1;
+  int64 expires_in = 2;
+}
+
+message GetUserRequest {
+  string id = 1;
+}
+
+message User {
+  string id = 1;
+  string name = 2;
+  string email = 3;
+  int32 age = 4;
+  repeated string roles = 5;
+}
+
+message GetUserResponse {
+  User user = 1;
+}
+
+service AuthService {
+  rpc Login(LoginRequest) returns (LoginResponse);
+}
+
+service UserService {
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+}
