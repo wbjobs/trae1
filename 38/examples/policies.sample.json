@@ -1,0 +1,27 @@
+[
+  {
+    "id": "pol-user-api-allow",
+    "name": "Allow client to call User API",
+    "description": "Client service is allowed to invoke user API on POST endpoints",
+    "source": "spiffe://example.org/ns/svc/client",
+    "destination": "spiffe://example.org/ns/svc/user-api",
+    "methods": ["POST", "GET"],
+    "path": "/api/v1/users",
+    "path_type": "prefix",
+    "effect": "allow",
+    "priority": 100,
+    "enabled": true
+  },
+  {
+    "id": "pol-user-api-deny-delete",
+    "name": "Deny DELETE on user API",
+    "source": "*",
+    "destination": "spiffe://example.org/ns/svc/user-api",
+    "methods": ["DELETE"],
+    "path": "/api/v1/users",
+    "path_type": "prefix",
+    "effect": "deny",
+    "priority": 200,
+    "enabled": true
+  }
+]

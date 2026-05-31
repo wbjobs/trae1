@@ -1,0 +1,48 @@
+version: "3.9"
+
+services:
+  etcd:
+    image: bitnami/etcd:3.5
+    environment:
+      - ALLOW_NONE_AUTHENTICATION=yes
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+    ports:
+      - "2379:2379"
+
+  spire-server:
+    image: ghcr.io/spiffe/spire-server:1.10.2
+    hostname: spire-server
+    volumes:
+      - ./deploy/spire/server:/opt/spire/.data
+    command: ["-config", "/opt/spire/.data/server.conf"]
+    ports:
+      - "8081:8081"
+
+  spire-agent:
+    image: ghcr.io/spiffe/spire-agent:1.10.2
+    depends_on:
+      - spire-server
+    volumes:
+      - ./deploy/spire/agent:/opt/spire/.data
+      - spire-agent-socket:/tmp/spire-agent/public
+    command: ["-config", "/opt/spire/.data/agent.conf"]
+
+  svid-gateway:
+    build: .
+    depends_on:
+      - etcd
+      - spire-agent
+    environment:
+      - ADMIN_PORT=8080
+      - GATEWAY_PORT=8443
+      - ETCD_ENDPOINTS=etcd:2379
+      - SPIRE_SOCKET_PATH=/tmp/spire-agent/public/api.sock
+      - TRUST_DOMAIN=example.org
+    volumes:
+      - spire-agent-socket:/tmp/spire-agent/public
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+
+volumes:
+  spire-agent-socket:
