@@ -1,0 +1,63 @@
+# Ceph RBD Snapshot Manager Configuration
+ceph:
+  cluster: "ceph"
+  user: "admin"
+  keyring: "/etc/ceph/ceph.client.admin.keyring"
+  monitors:
+    - "192.168.1.10:6789"
+    - "192.168.1.11:6789"
+    - "192.168.1.12:6789"
+  pool: "rbd"
+
+kubernetes:
+  kubeconfig: "~/.kube/config"
+  namespace: "default"
+
+scheduler:
+  tasks:
+    - name: "mysql-daily-backup"
+      cron: "0 2 * * *"
+      pvc:
+        - "mysql-data-0"
+      database:
+        type: "mysql"
+        host: "mysql.default.svc.cluster.local"
+        port: 3306
+        user: "root"
+        password: "your-password"
+        database: "appdb"
+      incremental: false
+
+    - name: "postgres-hourly-backup"
+      cron: "0 * * * *"
+      pvc:
+        - "postgres-data-0"
+      database:
+        type: "postgresql"
+        host: "postgres.default.svc.cluster.local"
+        port: 5432
+        user: "postgres"
+        password: "your-password"
+        database: "appdb"
+      incremental: true
+
+    - name: "distributed-mysql-cg"
+      cron: "0 4 * * 0"
+      pvc:
+        - "mysql-data-0"
+        - "mysql-data-1"
+        - "mysql-data-2"
+      database:
+        type: "mysql"
+        host: "mysql-0.mysql.default.svc.cluster.local"
+        port: 3306
+        user: "root"
+        password: "your-password"
+        database: "distributed_db"
+      incremental: false
+      consistency: true
+
+retention:
+  keep_daily: 7
+  keep_weekly: 4
+  keep_monthly: 6
