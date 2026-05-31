@@ -1,0 +1,317 @@
+@page "/realtime"
+@page "/realtime/{DeviceId:int}"
+@using IndustrialDataCollector.Api.Services
+@using IndustrialDataCollector.Core.DTOs
+@inject IDeviceApiService DeviceApi
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<PageTitle>实时数据监控</PageTitle>
+
+<div class="container-fluid mt-3">
+    <h3 class="mb-4">实时数据监控</h3>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <label class="form-label">选择设备</label>
+                    <select class="form-select" @bind="selectedDeviceId" @bind:event="onchange">
+                        <option value="">-- 选择设备 --</option>
+                        @foreach (var device in devices)
+                        {
+                            <option value="@device.Id">@device.Name (@device.IpAddress)</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">时间范围</label>
+                    <select class="form-select" @bind="timeRange" @bind:event="onchange">
+                        <option value="5">最近5分钟</option>
+                        <option value="15">最近15分钟</option>
+                        <option value="30">最近30分钟</option>
+                        <option value="60">最近1小时</option>
+                        <option value="180">最近3小时</option>
+                        <option value="360">最近6小时</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">选择数据类型</label>
+                    <div class="mt-2">
+                        @foreach (var register in availableRegisters)
+                        {
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" 
+                                       checked="@selectedRegisters.Contains(register)"
+                                       @onchange="(e) => ToggleRegister(register, e.Value)">
+                                <label class="form-check-label">@register</label>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <button class="btn btn-primary w-100" @onclick="RefreshData">
+                        刷新数据
+                    </button>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <button class="btn btn-secondary w-100" @onclick="ToggleAutoRefresh">
+                        @(autoRefresh ? "停止自动刷新" : "开始自动刷新")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (selectedDeviceId > 0)
+    {
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">设备信息</h5>
+            </div>
+            <div class="card-body">
+                @if (currentDevice != null)
+                {
+                    <div class="row">
+                        <div class="col-md-3">
+                            <strong>设备名称:</strong> @currentDevice.Name
+                        </div>
+                        <div class="col-md-3">
+                            <strong>IP地址:</strong> @currentDevice.IpAddress:@currentDevice.Port
+                        </div>
+                        <div class="col-md-3">
+                            <strong>状态:</strong> 
+                            <span class="badge @GetStatusBadgeClass(currentDevice.Status)">
+                                @currentDevice.Status
+                            </span>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>最后数据接收:</strong> 
+                            @currentDevice.LastDataReceivedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "-"
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">实时曲线图</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="realtimeChart" height="400"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">最新数据</h5>
+            </div>
+            <div class="card-body">
+                @if (latestData.Any())
+                {
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>时间</th>
+                                <th>设备</th>
+                                <th>数据点</th>
+                                <th>数值</th>
+                                <th>单位</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var data in latestData.Take(20))
+                            {
+                                <tr>
+                                    <td>@data.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                    <td>@data.DeviceName</td>
+                                    <td>@data.RegisterName</td>
+                                    <td>@data.Value.ToString("F2")</td>
+                                    <td>@data.Unit</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <p>暂无数据</p>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="text-center py-5">
+            <p>请选择一个设备查看实时数据</p>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int DeviceId { get; set; }
+
+    private IEnumerable<DeviceDto> devices = Enumerable.Empty<DeviceDto>();
+    private DeviceDto? currentDevice;
+    private int selectedDeviceId;
+    private int timeRange = 5;
+    private List<string> availableRegisters = new();
+    private List<string> selectedRegisters = new();
+    private IEnumerable<DataPointDto> latestData = Enumerable.Empty<DataPointDto>();
+    private bool autoRefresh;
+    private System.Threading.Timer? refreshTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        devices = await DeviceApi.GetDevicesAsync();
+        if (DeviceId > 0)
+        {
+            selectedDeviceId = DeviceId;
+            await LoadDeviceDataAsync();
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (DeviceId > 0 && selectedDeviceId != DeviceId)
+        {
+            selectedDeviceId = DeviceId;
+            await LoadDeviceDataAsync();
+        }
+    }
+
+    private async Task LoadDeviceDataAsync()
+    {
+        currentDevice = await DeviceApi.GetDeviceByIdAsync(selectedDeviceId);
+        if (currentDevice != null)
+        {
+            availableRegisters = currentDevice.RegisterMaps
+                .Where(r => r.IsActive)
+                .Select(r => r.Name)
+                .ToList();
+            
+            if (!selectedRegisters.Any())
+            {
+                selectedRegisters = availableRegisters.Take(4).ToList();
+            }
+        }
+
+        await RefreshData();
+    }
+
+    private async Task RefreshData()
+    {
+        if (selectedDeviceId <= 0) return;
+
+        var endTime = DateTime.UtcNow;
+        var startTime = endTime.AddMinutes(-timeRange);
+
+        var data = await DeviceApi.GetDeviceDataAsync(selectedDeviceId, startTime, endTime);
+        latestData = data.OrderByDescending(d => d.Timestamp).Take(20).ToList();
+
+        await UpdateChartAsync();
+    }
+
+    private void ToggleRegister(string register, object? checked)
+    {
+        var isChecked = checked is bool b && b;
+        if (isChecked && !selectedRegisters.Contains(register))
+        {
+            selectedRegisters.Add(register);
+        }
+        else if (!isChecked)
+        {
+            selectedRegisters.Remove(register);
+        }
+    }
+
+    private void ToggleAutoRefresh()
+    {
+        autoRefresh = !autoRefresh;
+        if (autoRefresh)
+        {
+            refreshTimer = new System.Threading.Timer(
+                async _ => 
+                {
+                    await RefreshData();
+                    await InvokeAsync(StateHasChanged);
+                },
+                null,
+                TimeSpan.Zero,
+                TimeSpan.FromSeconds(5));
+        }
+        else
+        {
+            refreshTimer?.Dispose();
+            refreshTimer = null;
+        }
+    }
+
+    private async Task UpdateChartAsync()
+    {
+        if (selectedDeviceId <= 0) return;
+
+        var endTime = DateTime.UtcNow;
+        var startTime = endTime.AddMinutes(-timeRange);
+
+        var data = await DeviceApi.GetDeviceDataAsync(selectedDeviceId, startTime, endTime);
+        var filteredData = data.Where(d => selectedRegisters.Contains(d.RegisterName)).ToList();
+
+        var timestamps = filteredData
+            .Select(d => d.Timestamp.ToString("HH:mm:ss"))
+            .Distinct()
+            .OrderBy(t => t)
+            .ToList();
+
+        var datasets = new List<object>();
+        var colors = new[] { "#2563eb", "#16a34a", "#dc2626", "#f59e0b", "#7c3aed", "#0891b2", "#db2777", "#65a30d" };
+        var colorIndex = 0;
+
+        foreach (var register in selectedRegisters)
+        {
+            var registerData = filteredData
+                .Where(d => d.RegisterName == register)
+                .GroupBy(d => d.Timestamp.ToString("HH:mm:ss"))
+                .Select(g => g.First())
+                .ToList();
+
+            var dataPoints = timestamps.Select(t => 
+                registerData.FirstOrDefault(d => d.Timestamp.ToString("HH:mm:ss") == t)?.Value ?? 0
+            ).ToList();
+
+            datasets.Add(new
+            {
+                label = register,
+                data = dataPoints,
+                borderColor = colors[colorIndex % colors.Length],
+                backgroundColor = colors[colorIndex % colors.Length] + "20",
+                tension = 0.3,
+                fill = false
+            });
+
+            colorIndex++;
+        }
+
+        await JSRuntime.InvokeVoidAsync("updateChart", timestamps, datasets);
+    }
+
+    private string GetStatusBadgeClass(Core.Enums.DeviceStatus status)
+    {
+        return status switch
+        {
+            Core.Enums.DeviceStatus.Online => "bg-success",
+            Core.Enums.DeviceStatus.Offline => "bg-danger",
+            Core.Enums.DeviceStatus.Reconnecting => "bg-warning text-dark",
+            _ => "bg-secondary"
+        };
+    }
+
+    public void Dispose()
+    {
+        refreshTimer?.Dispose();
+    }
+}

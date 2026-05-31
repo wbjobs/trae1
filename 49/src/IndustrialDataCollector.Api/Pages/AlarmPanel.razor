@@ -1,0 +1,427 @@
+@page "/alarms"
+@using IndustrialDataCollector.Api.Services
+@using IndustrialDataCollector.Core.DTOs
+@using IndustrialDataCollector.Core.Enums
+@inject IDeviceApiService DeviceApi
+@inject IAlarmApiService AlarmApi
+
+<PageTitle>告警管理</PageTitle>
+
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0">告警管理</h3>
+        <div class="d-flex gap-2">
+            <select class="form-select" style="width: 150px;" @bind="filterStatus" @bind:event="onchange">
+                <option value="">全部状态</option>
+                <option value="@AlarmStatus.Active">活动中</option>
+                <option value="@AlarmStatus.Acknowledged">已确认</option>
+                <option value="@AlarmStatus.Resolved">已消除</option>
+            </select>
+            <button class="btn btn-primary" @onclick="LoadAlarms">
+                <i class="bi bi-arrow-clockwise"></i> 刷新
+            </button>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body text-center">
+                    <h5 class="card-title">活动告警</h5>
+                    <h2 class="mb-0">@alarmCounts.Active</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark">
+                <div class="card-body text-center">
+                    <h5 class="card-title">已确认</h5>
+                    <h2 class="mb-0">@alarmCounts.Acknowledged</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center">
+                    <h5 class="card-title">待处理工单</h5>
+                    <h2 class="mb-0">@alarmCounts.PendingWorkOrders</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-secondary text-white">
+                <div class="card-body text-center">
+                    <h5 class="card-title">总计</h5>
+                    <h2 class="mb-0">@alarmCounts.Total</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            @if (isLoading)
+            {
+                <p>加载中...</p>
+            }
+            else if (!alarms.Any())
+            {
+                <div class="text-center py-5">
+                    <p>暂无告警</p>
+                </div>
+            }
+            else
+            {
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>级别</th>
+                            <th>设备</th>
+                            <th>数据点</th>
+                            <th>消息</th>
+                            <th>当前值</th>
+                            <th>阈值</th>
+                            <th>状态</th>
+                            <th>触发时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var alarm in alarms)
+                        {
+                            <tr class="@GetRowClass(alarm.Status)">
+                                <td>
+                                    <span class="badge @GetLevelBadgeClass(alarm.Level)">
+                                        @alarm.Level
+                                    </span>
+                                </td>
+                                <td>@alarm.DeviceName</td>
+                                <td>@alarm.RegisterName</td>
+                                <td>@alarm.Message</td>
+                                <td>@alarm.ActualValue.ToString("F2") @alarm.Unit</td>
+                                <td>@alarm.ThresholdValue?.ToString("F2") @alarm.Unit</td>
+                                <td>
+                                    <span class="badge @GetStatusBadgeClass(alarm.Status)">
+                                        @GetStatusText(alarm.Status)
+                                    </span>
+                                </td>
+                                <td>@alarm.TriggeredAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                <td>
+                                    @if (alarm.Status == AlarmStatus.Active)
+                                    {
+                                        <button class="btn btn-sm btn-primary me-1" @onclick="() => ShowAcknowledgeModal(alarm)">
+                                            确认
+                                        </button>
+                                    }
+                                    @if (alarm.Status != AlarmStatus.Resolved)
+                                    {
+                                        <button class="btn btn-sm btn-success" @onclick="() => ShowResolveModal(alarm)">
+                                            消除
+                                        </button>
+                                    }
+                                    @if (alarm.WorkOrderId.HasValue)
+                                    {
+                                        <button class="btn btn-sm btn-info ms-1" @onclick="() => ShowWorkOrder(alarm)">
+                                            工单
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+    @if (showAcknowledgeModal)
+    {
+        <div class="modal show" style="display:block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">确认告警</h5>
+                        <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p><strong>设备:</strong> @selectedAlarm?.DeviceName</p>
+                        <p><strong>数据点:</strong> @selectedAlarm?.RegisterName</p>
+                        <p><strong>消息:</strong> @selectedAlarm?.Message</p>
+                        <div class="mb-3">
+                            <label class="form-label">确认人 *</label>
+                            <input class="form-control" @bind="acknowledgeForm.AcknowledgedBy" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">备注</label>
+                            <textarea class="form-control" @bind="acknowledgeForm.Note" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseModal">取消</button>
+                        <button type="button" class="btn btn-primary" @onclick="AcknowledgeAlarm">确认</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (showResolveModal)
+    {
+        <div class="modal show" style="display:block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">消除告警</h5>
+                        <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p><strong>设备:</strong> @selectedAlarm?.DeviceName</p>
+                        <p><strong>数据点:</strong> @selectedAlarm?.RegisterName</p>
+                        <p><strong>消息:</strong> @selectedAlarm?.Message</p>
+                        <div class="mb-3">
+                            <label class="form-label">处理人 *</label>
+                            <input class="form-control" @bind="resolveForm.ResolvedBy" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">处理结果 *</label>
+                            <textarea class="form-control" @bind="resolveForm.Resolution" rows="3" placeholder="请描述问题原因和解决方式..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseModal">取消</button>
+                        <button type="button" class="btn btn-success" @onclick="ResolveAlarm">确认消除</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (showWorkOrderModal && selectedWorkOrder != null)
+    {
+        <div class="modal show" style="display:block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">工单详情 - @selectedWorkOrder.OrderNumber</h5>
+                        <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <p><strong>标题:</strong> @selectedWorkOrder.Title</p>
+                                <p><strong>状态:</strong> 
+                                    <span class="badge @GetWorkOrderStatusBadgeClass(selectedWorkOrder.Status)">
+                                        @selectedWorkOrder.Status
+                                    </span>
+                                </p>
+                                <p><strong>优先级:</strong> 
+                                    <span class="badge @GetWorkOrderPriorityBadgeClass(selectedWorkOrder.Priority)">
+                                        @selectedWorkOrder.Priority
+                                    </span>
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>设备:</strong> @selectedWorkOrder.DeviceName</p>
+                                <p><strong>数据点:</strong> @selectedWorkOrder.RegisterName</p>
+                                <p><strong>指派给:</strong> @selectedWorkOrder.AssignedTo ?? "-"</p>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label"><strong>描述</strong></label>
+                            <p>@selectedWorkOrder.Description</p>
+                        </div>
+                        @if (selectedWorkOrder.Resolution != null)
+                        {
+                            <div class="mb-3">
+                                <label class="form-label"><strong>处理结果</strong></label>
+                                <p>@selectedWorkOrder.Resolution</p>
+                            </div>
+                        }
+                        <div class="row">
+                            <div class="col-md-4">
+                                <p><strong>创建时间:</strong> @selectedWorkOrder.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</p>
+                            </div>
+                            <div class="col-md-4">
+                                <p><strong>开始时间:</strong> @selectedWorkOrder.StartedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "-"</p>
+                            </div>
+                            <div class="col-md-4">
+                                <p><strong>完成时间:</strong> @selectedWorkOrder.CompletedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "-"</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private IEnumerable<AlarmDto> alarms = Enumerable.Empty<AlarmDto>();
+    private AlarmStatus? filterStatus;
+    private bool isLoading = true;
+    private AlarmDto? selectedAlarm;
+    private WorkOrderDto? selectedWorkOrder;
+    private bool showAcknowledgeModal;
+    private bool showResolveModal;
+    private bool showWorkOrderModal;
+    private AlarmAcknowledgeDto acknowledgeForm = new();
+    private AlarmResolveDto resolveForm = new();
+
+    private (int Active, int Acknowledged, int PendingWorkOrders, int Total) alarmCounts = (0, 0, 0, 0);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAlarms();
+    }
+
+    private async Task LoadAlarms()
+    {
+        isLoading = true;
+        try
+        {
+            var result = await AlarmApi.GetAlarmCounts();
+            alarmCounts = result;
+
+            IEnumerable<AlarmDto> allAlarms;
+            if (filterStatus.HasValue)
+            {
+                allAlarms = await AlarmApi.GetAlarmsByStatus(filterStatus.Value);
+            }
+            else
+            {
+                allAlarms = await AlarmApi.GetAllAlarms();
+            }
+
+            alarms = allAlarms;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading alarms: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ShowAcknowledgeModal(AlarmDto alarm)
+    {
+        selectedAlarm = alarm;
+        acknowledgeForm = new AlarmAcknowledgeDto();
+        showAcknowledgeModal = true;
+    }
+
+    private void ShowResolveModal(AlarmDto alarm)
+    {
+        selectedAlarm = alarm;
+        resolveForm = new AlarmResolveDto();
+        showResolveModal = true;
+    }
+
+    private async Task ShowWorkOrder(AlarmDto alarm)
+    {
+        if (alarm.WorkOrderId.HasValue)
+        {
+            selectedWorkOrder = await AlarmApi.GetWorkOrder(alarm.WorkOrderId.Value);
+            showWorkOrderModal = true;
+        }
+    }
+
+    private void CloseModal()
+    {
+        selectedAlarm = null;
+        selectedWorkOrder = null;
+        showAcknowledgeModal = false;
+        showResolveModal = false;
+        showWorkOrderModal = false;
+    }
+
+    private async Task AcknowledgeAlarm()
+    {
+        if (selectedAlarm != null && !string.IsNullOrEmpty(acknowledgeForm.AcknowledgedBy))
+        {
+            await AlarmApi.AcknowledgeAlarm(selectedAlarm.Id, acknowledgeForm);
+            CloseModal();
+            await LoadAlarms();
+        }
+    }
+
+    private async Task ResolveAlarm()
+    {
+        if (selectedAlarm != null && !string.IsNullOrEmpty(resolveForm.ResolvedBy) && !string.IsNullOrEmpty(resolveForm.Resolution))
+        {
+            await AlarmApi.ResolveAlarm(selectedAlarm.Id, resolveForm);
+            CloseModal();
+            await LoadAlarms();
+        }
+    }
+
+    private string GetRowClass(AlarmStatus status)
+    {
+        return status switch
+        {
+            AlarmStatus.Active => "table-danger",
+            AlarmStatus.Acknowledged => "table-warning",
+            AlarmStatus.Resolved => "table-success",
+            _ => ""
+        };
+    }
+
+    private string GetLevelBadgeClass(AlarmLevel level)
+    {
+        return level switch
+        {
+            AlarmLevel.Info => "bg-info",
+            AlarmLevel.Warning => "bg-warning text-dark",
+            AlarmLevel.Critical => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetStatusBadgeClass(AlarmStatus status)
+    {
+        return status switch
+        {
+            AlarmStatus.Active => "bg-danger",
+            AlarmStatus.Acknowledged => "bg-warning text-dark",
+            AlarmStatus.Resolved => "bg-success",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetStatusText(AlarmStatus status)
+    {
+        return status switch
+        {
+            AlarmStatus.Active => "活动中",
+            AlarmStatus.Acknowledged => "已确认",
+            AlarmStatus.Resolved => "已消除",
+            _ => status.ToString()
+        };
+    }
+
+    private string GetWorkOrderStatusBadgeClass(WorkOrderStatus status)
+    {
+        return status switch
+        {
+            WorkOrderStatus.Pending => "bg-warning text-dark",
+            WorkOrderStatus.InProgress => "bg-primary",
+            WorkOrderStatus.Completed => "bg-success",
+            WorkOrderStatus.Cancelled => "bg-secondary",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetWorkOrderPriorityBadgeClass(WorkOrderPriority priority)
+    {
+        return priority switch
+        {
+            WorkOrderPriority.Low => "bg-info",
+            WorkOrderPriority.Medium => "bg-warning text-dark",
+            WorkOrderPriority.High => "bg-danger",
+            WorkOrderPriority.Critical => "bg-dark",
+            _ => "bg-secondary"
+        };
+    }
+}

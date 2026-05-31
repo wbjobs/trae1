@@ -1,0 +1,421 @@
+@page "/devices"
+@using IndustrialDataCollector.Api.Services
+@using IndustrialDataCollector.Core.DTOs
+@using IndustrialDataCollector.Core.Enums
+@inject IDeviceApiService DeviceApi
+@using Microsoft.AspNetCore.Components.Forms
+
+<PageTitle>设备管理</PageTitle>
+
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0">设备管理</h3>
+        <button class="btn btn-primary" @onclick="ShowAddModal">
+            <i class="bi bi-plus"></i> 添加设备
+        </button>
+    </div>
+
+    @if (isLoading)
+    {
+        <p>加载中...</p>
+    }
+    else if (!devices.Any())
+    {
+        <div class="text-center py-5">
+            <p>暂无设备，点击"添加设备"按钮添加新设备</p>
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>设备名称</th>
+                            <th>IP地址</th>
+                            <th>端口</th>
+                            <th>从站ID</th>
+                            <th>状态</th>
+                            <th>寄存器数量</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var device in devices)
+                        {
+                            <tr>
+                                <td>@device.Id</td>
+                                <td>@device.Name</td>
+                                <td>@device.IpAddress</td>
+                                <td>@device.Port</td>
+                                <td>@device.SlaveId</td>
+                                <td>
+                                    <span class="badge @GetStatusBadgeClass(device.Status)">
+                                        @device.Status
+                                    </span>
+                                </td>
+                                <td>@device.RegisterMaps.Count</td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary me-1" @onclick="() => ShowEditModal(device)">
+                                        编辑
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" @onclick="() => ShowDeleteConfirm(device)">
+                                        删除
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @if (showAddModal || showEditModal)
+    {
+        <div class="modal show" style="display:block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">@(showEditModal ? "编辑设备" : "添加设备")</h5>
+                        <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <EditForm Model="deviceForm" OnValidSubmit="SaveDevice">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">设备名称 *</label>
+                                    <InputText @bind-Value="deviceForm.Name" class="form-control" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">IP地址 *</label>
+                                    <InputText @bind-Value="deviceForm.IpAddress" class="form-control" placeholder="192.168.1.100" />
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">端口 *</label>
+                                    <InputNumber @bind-Value="deviceForm.Port" class="form-control" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">从站ID *</label>
+                                    <InputNumber @bind-Value="deviceForm.SlaveId" class="form-control" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">启用</label>
+                                    <InputCheckbox @bind-Value="deviceForm.IsActive" class="form-check-input" />
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">描述</label>
+                                <InputTextArea @bind-Value="deviceForm.Description" class="form-control" rows="2" />
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">重连间隔(秒)</label>
+                                    <InputNumber @bind-Value="deviceForm.ReconnectIntervalSeconds" class="form-control" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">最大重连次数</label>
+                                    <InputNumber @bind-Value="deviceForm.MaxReconnectAttempts" class="form-control" />
+                                </div>
+                            </div>
+
+                            <hr />
+                            <h6>寄存器映射</h6>
+                            <div class="mb-2">
+                                <button type="button" class="btn btn-sm btn-secondary" @onclick="AddRegisterMap">
+                                    + 添加寄存器
+                                </button>
+                            </div>
+
+                            @for (int i = 0; i < deviceForm.RegisterMaps.Count; i++)
+                            {
+                                <div class="card mb-2">
+                                    <div class="card-body">
+                                    <div class="row mb-2">
+                                        <div class="col-md-2">
+                                            <label class="form-label">名称 *</label>
+                                            <InputText @bind-Value="deviceForm.RegisterMaps[i].Name" class="form-control form-control-sm" placeholder="Temperature" />
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">寄存器类型</label>
+                                            <InputSelect @bind-Value="deviceForm.RegisterMaps[i].RegisterType" class="form-select form-control-sm">
+                                                <option value="@RegisterType.HoldingRegister">保持寄存器</option>
+                                                <option value="@RegisterType.InputRegister">输入寄存器</option>
+                                            </InputSelect>
+                                        </div>
+                                        <div class="col-md-1">
+                                            <label class="form-label">地址</label>
+                                            <InputNumber @bind-Value="deviceForm.RegisterMaps[i].Address" class="form-control form-control-sm" />
+                                        </div>
+                                        <div class="col-md-1">
+                                            <label class="form-label">长度</label>
+                                            <InputNumber @bind-Value="deviceForm.RegisterMaps[i].Length" class="form-control form-control-sm" />
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">单位</label>
+                                            <InputText @bind-Value="deviceForm.RegisterMaps[i].Unit" class="form-control form-control-sm" placeholder="°C" />
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">数据类型</label>
+                                            <InputText @bind-Value="deviceForm.RegisterMaps[i].DataType" class="form-control form-control-sm" placeholder="float" />
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">启用</label>
+                                            <InputCheckbox @bind-Value="deviceForm.RegisterMaps[i].IsActive" class="form-check-input" />
+                                        </div>
+                                    </div>
+                                    <div class="row mb-2">
+                                        <div class="col-md-2">
+                                            <label class="form-label">缩放因子</label>
+                                            <InputNumber @bind-Value="deviceForm.RegisterMaps[i].ScaleFactor" class="form-control form-control-sm" />
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">偏移量</label>
+                                            <InputNumber @bind-Value="deviceForm.RegisterMaps[i].Offset" class="form-control form-control-sm" />
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">上限阈值</label>
+                                            <InputNumber @bind-Value="deviceForm.RegisterMaps[i].UpperThreshold" class="form-control form-control-sm" />
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">下限阈值</label>
+                                            <InputNumber @bind-Value="deviceForm.RegisterMaps[i].LowerThreshold" class="form-control form-control-sm" />
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">启用告警</label>
+                                            <InputCheckbox @bind-Value="deviceForm.RegisterMaps[i].EnableAlarm" class="form-check-input" />
+                                        </div>
+                                        <div class="col-md-2 text-end">
+                                            <label class="form-label">&nbsp;</label>
+                                            <button type="button" class="btn btn-sm btn-danger" @onclick="() => RemoveRegisterMap(i)">
+                                                删除
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-2">
+                                        <div class="col-md-3">
+                                            <label class="form-label">控制线圈地址</label>
+                                            <InputNumber @bind-Value="deviceForm.RegisterMaps[i].ControlCoilAddress" class="form-control form-control-sm" />
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">线圈置位值</label>
+                                            <InputSelect @bind-Value="deviceForm.RegisterMaps[i].ControlCoilValue" class="form-select form-control-sm">
+                                                <option value="@true">ON (true)</option>
+                                                <option value="@false">OFF (false)</option>
+                                            </InputSelect>
+                                        </div>
+                                        <div class="col-md-7">
+                                            <label class="form-label">控制描述</label>
+                                            <InputText @bind-Value="deviceForm.RegisterMaps[i].ControlDescription" class="form-control form-control-sm" placeholder="如：温度过高时启动风扇" />
+                                        </div>
+                                    </div>
+                                    <div class="mb-0">
+                                        <label class="form-label">描述</label>
+                                        <InputText @bind-Value="deviceForm.RegisterMaps[i].Description" class="form-control form-control-sm" placeholder="温度传感器" />
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                            <div class="text-end mt-3">
+                                <button type="button" class="btn btn-secondary me-2" @onclick="CloseModal">取消</button>
+                                <button type="submit" class="btn btn-primary">保存</button>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (showDeleteConfirm)
+    {
+        <div class="modal show" style="display:block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">确认删除</h5>
+                        <button type="button" class="btn-close" @onclick="CloseDeleteConfirm"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>确定要删除设备 "@selectedDevice?.Name" 吗？此操作不可撤销。</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseDeleteConfirm">取消</button>
+                        <button type="button" class="btn btn-danger" @onclick="ConfirmDelete">确认删除</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private IEnumerable<DeviceDto> devices = Enumerable.Empty<DeviceDto>();
+    private bool isLoading = true;
+    private bool showAddModal;
+    private bool showEditModal;
+    private bool showDeleteConfirm;
+    private DeviceDto? selectedDevice;
+    private DeviceCreateDto deviceForm = new();
+    private int? editingDeviceId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDevicesAsync();
+    }
+
+    private async Task LoadDevicesAsync()
+    {
+        isLoading = true;
+        devices = await DeviceApi.GetDevicesAsync();
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private void ShowAddModal()
+    {
+        deviceForm = new DeviceCreateDto
+        {
+            Port = 502,
+            SlaveId = 1,
+            ReconnectIntervalSeconds = 30,
+            MaxReconnectAttempts = 5,
+            IsActive = true
+        };
+        editingDeviceId = null;
+        showAddModal = true;
+        showEditModal = false;
+    }
+
+    private void ShowEditModal(DeviceDto device)
+    {
+        deviceForm = new DeviceCreateDto
+        {
+            Name = device.Name,
+            IpAddress = device.IpAddress,
+            Port = device.Port,
+            SlaveId = device.SlaveId,
+            Description = device.Description,
+            ReconnectIntervalSeconds = device.ReconnectIntervalSeconds,
+            MaxReconnectAttempts = device.MaxReconnectAttempts,
+            IsActive = device.IsActive,
+            RegisterMaps = device.RegisterMaps.Select(r => new RegisterMapCreateDto
+            {
+                Name = r.Name,
+                Description = r.Description,
+                RegisterType = r.RegisterType,
+                Address = r.Address,
+                Length = r.Length,
+                ScaleFactor = r.ScaleFactor,
+                Offset = r.Offset,
+                Unit = r.Unit,
+                DataType = r.DataType,
+                IsActive = r.IsActive,
+                UpperThreshold = r.UpperThreshold,
+                LowerThreshold = r.LowerThreshold,
+                EnableAlarm = r.EnableAlarm,
+                ControlCoilAddress = r.ControlCoilAddress,
+                ControlCoilValue = r.ControlCoilValue,
+                ControlDescription = r.ControlDescription
+            }).ToList()
+        };
+        editingDeviceId = device.Id;
+        showEditModal = true;
+        showAddModal = false;
+    }
+
+    private void CloseModal()
+    {
+        showAddModal = false;
+        showEditModal = false;
+        editingDeviceId = null;
+    }
+
+    private void AddRegisterMap()
+    {
+        deviceForm.RegisterMaps.Add(new RegisterMapCreateDto
+        {
+            RegisterType = RegisterType.HoldingRegister,
+            Length = 1,
+            ScaleFactor = 1.0,
+            Offset = 0.0,
+            DataType = "float",
+            IsActive = true
+        });
+    }
+
+    private void RemoveRegisterMap(int index)
+    {
+        if (index >= 0 && index < deviceForm.RegisterMaps.Count)
+        {
+            deviceForm.RegisterMaps.RemoveAt(index);
+        }
+    }
+
+    private async Task SaveDevice()
+    {
+        if (editingDeviceId.HasValue)
+        {
+            var updateDto = new DeviceUpdateDto
+            {
+                Name = deviceForm.Name,
+                IpAddress = deviceForm.IpAddress,
+                Port = deviceForm.Port,
+                SlaveId = deviceForm.SlaveId,
+                Description = deviceForm.Description,
+                ReconnectIntervalSeconds = deviceForm.ReconnectIntervalSeconds,
+                MaxReconnectAttempts = deviceForm.MaxReconnectAttempts,
+                IsActive = deviceForm.IsActive,
+                RegisterMaps = deviceForm.RegisterMaps
+            };
+
+            await DeviceApi.UpdateDeviceAsync(editingDeviceId.Value, updateDto);
+        }
+        else
+        {
+            await DeviceApi.AddDeviceAsync(deviceForm);
+        }
+
+        CloseModal();
+        await LoadDevicesAsync();
+    }
+
+    private void ShowDeleteConfirm(DeviceDto device)
+    {
+        selectedDevice = device;
+        showDeleteConfirm = true;
+    }
+
+    private void CloseDeleteConfirm()
+    {
+        selectedDevice = null;
+        showDeleteConfirm = false;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (selectedDevice != null)
+        {
+            await DeviceApi.DeleteDeviceAsync(selectedDevice.Id);
+            CloseDeleteConfirm();
+            await LoadDevicesAsync();
+        }
+    }
+
+    private string GetStatusBadgeClass(DeviceStatus status)
+    {
+        return status switch
+        {
+            DeviceStatus.Online => "bg-success",
+            DeviceStatus.Offline => "bg-danger",
+            DeviceStatus.Reconnecting => "bg-warning text-dark",
+            DeviceStatus.Error => "bg-secondary",
+            _ => "bg-secondary"
+        };
+    }
+}

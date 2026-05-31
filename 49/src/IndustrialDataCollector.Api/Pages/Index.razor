@@ -1,0 +1,136 @@
+@page "/"
+@using IndustrialDataCollector.Api.Services
+@using IndustrialDataCollector.Core.DTOs
+@inject IDeviceApiService DeviceApi
+@inject NavigationManager Navigation
+
+<PageTitle>设备监控总览</PageTitle>
+
+<div class="container-fluid mt-3">
+    <h3 class="mb-4">设备监控总览</h3>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <h5 class="card-title">设备总数</h5>
+                    <h2 class="mb-0">@devices.Count()</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h5 class="card-title">在线设备</h5>
+                    <h2 class="mb-0">@onlineCount</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body text-center">
+                    <h5 class="card-title">离线设备</h5>
+                    <h2 class="mb-0">@offlineCount</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark">
+                <div class="card-body text-center">
+                    <h5 class="card-title">重连中</h5>
+                    <h2 class="mb-0">@reconnectingCount</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">设备状态列表</h5>
+        </div>
+        <div class="card-body">
+            @if (isLoading)
+            {
+                <p>加载中...</p>
+            }
+            else if (!devices.Any())
+            {
+                <p>暂无设备，请先添加设备。</p>
+            }
+            else
+            {
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>设备名称</th>
+                            <th>IP地址</th>
+                            <th>端口</th>
+                            <th>状态</th>
+                            <th>最后连接时间</th>
+                            <th>最后数据接收</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var device in devices)
+                        {
+                            <tr>
+                                <td>@device.Name</td>
+                                <td>@device.IpAddress</td>
+                                <td>@device.Port</td>
+                                <td>
+                                    <span class="badge @GetStatusBadgeClass(device.Status)">
+                                        @device.Status
+                                    </span>
+                                </td>
+                                <td>@device.LastConnectedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "-"</td>
+                                <td>@device.LastDataReceivedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "-"</td>
+                                <td>
+                                    <button class="btn btn-sm btn-info" @onclick="() => Navigation.NavigateTo($'/realtime/{device.Id}')">
+                                        查看数据
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private IEnumerable<DeviceDto> devices = Enumerable.Empty<DeviceDto>();
+    private bool isLoading = true;
+    private int onlineCount;
+    private int offlineCount;
+    private int reconnectingCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDevicesAsync();
+    }
+
+    private async Task LoadDevicesAsync()
+    {
+        isLoading = true;
+        devices = await DeviceApi.GetDevicesAsync();
+        onlineCount = devices.Count(d => d.Status == Core.Enums.DeviceStatus.Online);
+        offlineCount = devices.Count(d => d.Status == Core.Enums.DeviceStatus.Offline);
+        reconnectingCount = devices.Count(d => d.Status == Core.Enums.DeviceStatus.Reconnecting);
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private string GetStatusBadgeClass(Core.Enums.DeviceStatus status)
+    {
+        return status switch
+        {
+            Core.Enums.DeviceStatus.Online => "bg-success",
+            Core.Enums.DeviceStatus.Offline => "bg-danger",
+            Core.Enums.DeviceStatus.Reconnecting => "bg-warning text-dark",
+            Core.Enums.DeviceStatus.Error => "bg-secondary",
+            _ => "bg-secondary"
+        };
+    }
+}

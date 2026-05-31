@@ -1,0 +1,70 @@
+@using IndustrialDataCollector.Api.Services
+@using IndustrialDataCollector.Core.Enums
+@inject IAlarmApiService AlarmApi
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">工业设备数据采集系统</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" href="/">总览</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/realtime">实时监控</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/devices">设备管理</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/alarms">
+                        告警管理
+                        @if (alarmCounts.Active > 0)
+                        {
+                            <span class="badge bg-danger ms-1">@alarmCounts.Active</span>
+                        }
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/offline-logs">离线日志</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+@code {
+    private (int Active, int Acknowledged, int PendingWorkOrders, int Total) alarmCounts = (0, 0, 0, 0);
+    private System.Threading.Timer? refreshTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAlarmCounts();
+        refreshTimer = new System.Threading.Timer(
+            async _ =>
+            {
+                await RefreshAlarmCounts();
+                await InvokeAsync(StateHasChanged);
+            },
+            null,
+            TimeSpan.Zero,
+            TimeSpan.FromSeconds(10));
+    }
+
+    private async Task RefreshAlarmCounts()
+    {
+        try
+        {
+            alarmCounts = await AlarmApi.GetAlarmCounts();
+        }
+        catch { }
+    }
+
+    public void Dispose()
+    {
+        refreshTimer?.Dispose();
+    }
+}
