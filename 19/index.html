@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>常微分方程初值问题高精度求解系统</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>常微分方程初值问题高精度求解系统</h1>
+            <p class="subtitle">支持欧拉法、改进欧拉法、龙格-库塔法等多种数值求解方法</p>
+        </header>
+
+        <main>
+            <div class="main-grid">
+                <div class="control-panel">
+                    <div class="section">
+                        <h2>方程输入</h2>
+                        <div class="form-group">
+                            <label for="equation">微分方程 y' = f(t, y)</label>
+                            <input type="text" id="equation" placeholder="例如: -2*y + exp(-t)" value="-2*y + exp(-t)">
+                            <small class="hint">支持 sin, cos, tan, exp, log, sqrt, pow 等函数</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="initialConditions">初始条件 y(0), y'(0), ...</label>
+                            <input type="text" id="initialConditions" placeholder="例如: 1, 0" value="1">
+                            <small class="hint">多个初始条件用逗号分隔（高阶方程）</small>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="tStart">起始时间 t₀</label>
+                                <input type="number" id="tStart" step="0.1" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="tEnd">终止时间 tₙ</label>
+                                <input type="number" id="tEnd" step="0.1" value="5">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h2>求解方法</h2>
+                        <div class="form-group">
+                            <label for="methodSelect">数值方法</label>
+                            <select id="methodSelect">
+                                <optgroup label="欧拉类方法">
+                                    <option value="euler">欧拉法 (Euler)</option>
+                                    <option value="euler_improved">改进欧拉法</option>
+                                    <option value="midpoint">中点法</option>
+                                    <option value="heun">Heun法</option>
+                                </optgroup>
+                                <optgroup label="龙格-库塔方法">
+                                    <option value="rk2">龙格-库塔2阶</option>
+                                    <option value="rk3">龙格-库塔3阶</option>
+                                    <option value="rk4" selected>龙格-库塔4阶 (RK4)</option>
+                                    <option value="rk5">龙格-库塔5阶</option>
+                                    <option value="rk45">龙格-库塔45阶 (自适应)</option>
+                                </optgroup>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="stepSize">步长 h</label>
+                            <input type="number" id="stepSize" step="0.001" min="0.0001" max="1" value="0.01">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="tolerance">容差 ε</label>
+                            <input type="text" id="tolerance" value="1e-8">
+                        </div>
+
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="adaptiveStep" checked>
+                                启用自适应步长
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h2>操作</h2>
+                        <div class="button-group">
+                            <button id="solveBtn" class="btn btn-primary">求解方程</button>
+                            <button id="compareBtn" class="btn btn-secondary">方法对比</button>
+                            <button id="errorBtn" class="btn btn-accent">误差分析</button>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h2>预设示例</h2>
+                        <div class="preset-buttons">
+                            <button class="btn-preset" onclick="loadPreset('exponential')">指数衰减</button>
+                            <button class="btn-preset" onclick="loadPreset('logistic')">Logistic增长</button>
+                            <button class="btn-preset" onclick="loadPreset('oscillator')">简谐振动</button>
+                            <button class="btn-preset" onclick="loadPreset('pendulum')">单摆方程</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="display-panel">
+                    <div class="chart-section">
+                        <h2>求解曲线</h2>
+                        <canvas id="solutionCanvas" width="700" height="400"></canvas>
+                    </div>
+
+                    <div class="chart-section">
+                        <h2>误差趋势</h2>
+                        <canvas id="errorCanvas" width="700" height="250"></canvas>
+                    </div>
+
+                    <div class="results-section">
+                        <h2>结果数据</h2>
+                        <div id="resultDisplay" class="result-container">
+                            <p class="placeholder">请输入方程并点击"求解方程"按钮</p>
+                        </div>
+                    </div>
+
+                    <div class="error-section">
+                        <h2>误差统计</h2>
+                        <div id="errorDisplay" class="error-container">
+                            <p class="placeholder">求解后显示误差统计信息</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>常微分方程初值问题高精度求解系统 | 支持一阶及高阶微分方程</p>
+        </footer>
+    </div>
+
+    <script src="src/config.js"></script>
+    <script src="src/parser.js"></script>
+    <script src="src/euler.js"></script>
+    <script src="src/rungekutta.js"></script>
+    <script src="src/error.js"></script>
+    <script src="src/renderer.js"></script>
+    <script src="src/app.js"></script>
+    <script>
+        function loadPreset(type) {
+            const equation = document.getElementById('equation');
+            const initialConditions = document.getElementById('initialConditions');
+            const tStart = document.getElementById('tStart');
+            const tEnd = document.getElementById('tEnd');
+
+            switch(type) {
+                case 'exponential':
+                    equation.value = '-y';
+                    initialConditions.value = '1';
+                    tStart.value = '0';
+                    tEnd.value = '5';
+                    break;
+                case 'logistic':
+                    equation.value = 'y*(1 - y)';
+                    initialConditions.value = '0.1';
+                    tStart.value = '0';
+                    tEnd.value = '10';
+                    break;
+                case 'oscillator':
+                    equation.value = '-y';
+                    initialConditions.value = '1, 0';
+                    tStart.value = '0';
+                    tEnd.value = '10';
+                    break;
+                case 'pendulum':
+                    equation.value = '-sin(y)';
+                    initialConditions.value = '0.5, 0';
+                    tStart.value = '0';
+                    tEnd.value = '10';
+                    break;
+            }
+        }
+    </script>
+</body>
+</html>

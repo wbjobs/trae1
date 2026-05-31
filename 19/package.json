@@ -1,0 +1,13 @@
+{
+  "name": "ode-solver",
+  "version": "1.0.0",
+  "description": "常微分方程初值问题高精度求解系统",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "python -m http.server 8080",
+    "test": "node test/test.js"
+  },
+  "keywords": ["ode", "differential-equation", "numerical-methods", "runge-kutta"],
+  "author": "ODE Solver",
+  "license": "MIT"
+}
