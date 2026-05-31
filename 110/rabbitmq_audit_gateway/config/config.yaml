@@ -1,0 +1,90 @@
+gateway:
+  name: rabbitmq_audit_gateway
+  host: 0.0.0.0
+  port: 5672
+  management_port: 15672
+  vhost: /
+  username: guest
+  password: guest
+  heartbeat: 60
+  connection_timeout: 30
+
+ha:
+  mode: active_standby
+  health_check_interval: 5
+  election_timeout: 10
+  shared_lock_path: /tmp/gateway_lock
+
+audit:
+  enabled: true
+  log_level: INFO
+  sample_rate: 0.01
+  sample_by_type: false
+  batch_size: 100
+  flush_interval: 5
+  max_body_size: 1048576  # 1MB, 超过此大小只审计元数据
+  preview_size: 1024  # 1KB, 保存到审计记录的预览大小
+
+sampling:
+  default_rate: 0.01
+  large_message_threshold: 1048576  # 1MB, 超过此大小认为是大消息
+  large_message_rate: 0.001  # 大消息采样率
+  by_message_type:
+    critical: 1.0
+    normal: 0.1
+    low: 0.01
+
+interception:
+  enabled: true
+  rules_file: config/interception_rules.yaml
+  block_action: drop
+  log_blocked: true
+  check_prefix_size: 4096  # 4KB, 检查消息前缀
+  check_suffix_size: 4096  # 4KB, 检查消息后缀
+
+sinks:
+  kafka:
+    enabled: false
+    bootstrap_servers: localhost:9092
+    topic: rabbitmq_audit_logs
+    compression: gzip
+  elasticsearch:
+    enabled: true
+    hosts:
+      - http://localhost:9200
+    index: rabbitmq_audit
+    username: elastic
+    password: changeme
+
+dashboard:
+  host: 0.0.0.0
+  port: 8080
+  refresh_interval: 5
+
+otel:
+  enabled: true
+  service_name: rabbitmq_audit_gateway
+  exporter: otlp
+  endpoint: http://localhost:4317
+  insecure: true
+
+virus_scan:
+  enabled: false
+  scan_mode: async
+  scan_timeout: 5
+  quarantine_exchange: audit.quarantine
+  auto_quarantine: true
+  notify_on_infection: true
+  max_threads: 4
+  max_body_size: 10485760  # 10MB, 超过此大小跳过扫描
+  min_attachment_size: 1024  # 1KB, 最小附件大小
+  skip_large_messages: true
+  db_update_interval_hours: 24
+  clamav:
+    enabled: false
+    host: localhost
+    port: 3310
+    socket_path: /var/run/clamav/clamd.sock
+  yara:
+    enabled: false
+    rules_dir: yara_rules

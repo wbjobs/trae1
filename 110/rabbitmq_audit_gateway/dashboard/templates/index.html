@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RabbitMQ 消息审计网关</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+        .header { background: #1e293b; padding: 1rem 2rem; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { font-size: 1.5rem; color: #38bdf8; }
+        .status-badge { padding: 0.5rem 1rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; }
+        .status-active { background: #22c55e; color: #052e16; }
+        .status-standby { background: #f59e0b; color: #451a03; }
+        .status-fault { background: #ef4444; color: #450a0a; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .card { background: #1e293b; border-radius: 12px; padding: 1.5rem; border: 1px solid #334155; }
+        .card h3 { font-size: 0.875rem; color: #94a3b8; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .card .value { font-size: 2rem; font-weight: 700; color: #f8fafc; }
+        .card .value.published { color: #22c55e; }
+        .card .value.consumed { color: #38bdf8; }
+        .card .value.intercepted { color: #ef4444; }
+        .chart-container { background: #1e293b; border-radius: 12px; padding: 1.5rem; border: 1px solid #334155; margin-bottom: 2rem; }
+        .chart-title { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: #e2e8f0; }
+        .rules-section { background: #1e293b; border-radius: 12px; padding: 1.5rem; border: 1px solid #334155; }
+        .rules-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .rules-header h2 { font-size: 1.125rem; font-weight: 600; }
+        .btn { padding: 0.5rem 1rem; border-radius: 6px; border: none; cursor: pointer; font-size: 0.875rem; font-weight: 500; transition: all 0.2s; }
+        .btn-primary { background: #38bdf8; color: #0c4a6e; }
+        .btn-primary:hover { background: #0ea5e9; }
+        .btn-danger { background: #ef4444; color: #450a0a; }
+        .btn-danger:hover { background: #dc2626; }
+        .rules-table { width: 100%; border-collapse: collapse; }
+        .rules-table th, .rules-table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #334155; }
+        .rules-table th { font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; font-weight: 600; }
+        .rules-table td { font-size: 0.875rem; }
+        .rule-toggle { width: 40px; height: 20px; border-radius: 10px; position: relative; cursor: pointer; transition: background 0.2s; }
+        .rule-toggle.enabled { background: #22c55e; }
+        .rule-toggle.disabled { background: #475569; }
+        .rule-toggle::after { content: ''; position: absolute; width: 16px; height: 16px; border-radius: 50%; background: white; top: 2px; left: 2px; transition: transform 0.2s; }
+        .rule-toggle.enabled::after { transform: translateX(20px); }
+        .severity-badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+        .severity-high { background: #ef4444; color: white; }
+        .severity-medium { background: #f59e0b; color: #451a03; }
+        .severity-low { background: #3b82f6; color: white; }
+        .refresh-info { font-size: 0.75rem; color: #64748b; margin-top: 0.5rem; }
+        .uptime { font-size: 0.875rem; color: #94a3b8; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+        @media (max-width: 1024px) { .two-col { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🐰 RabbitMQ 消息审计网关</h1>
+        <div>
+            <span id="ha-status" class="status-badge status-standby">未知</span>
+            <span class="uptime">运行时间: <span id="uptime">0</span>s</span>
+        </div>
+    </div>
+    <div class="container">
+        <div class="grid">
+            <div class="card">
+                <h3>已发布消息</h3>
+                <div class="value published" id="published-count">0</div>
+                <div class="refresh-info">消息/秒: <span id="publish-rate">0</span></div>
+            </div>
+            <div class="card">
+                <h3>已消费消息</h3>
+                <div class="value consumed" id="consumed-count">0</div>
+                <div class="refresh-info">消息/秒: <span id="consume-rate">0</span></div>
+            </div>
+            <div class="card">
+                <h3>已拦截消息</h3>
+                <div class="value intercepted" id="intercepted-count">0</div>
+                <div class="refresh-info">拦截率: <span id="intercept-rate">0</span>%</div>
+            </div>
+            <div class="card">
+                <h3>总数据量</h3>
+                <div class="value" id="total-bytes">0</div>
+                <div class="refresh-info">MB</div>
+            </div>
+        </div>
+        <div class="two-col">
+            <div class="chart-container">
+                <div class="chart-title">📊 消息流量趋势</div>
+                <canvas id="flowChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title">⏱️ 延迟趋势 (ms)</div>
+                <canvas id="latencyChart"></canvas>
+            </div>
+        </div>
+        <div class="rules-section">
+            <div class="rules-header">
+                <h2>🛡️ 拦截规则</h2>
+                <div>
+                    <button class="btn btn-primary" onclick="reloadRules()">重新加载规则</button>
+                </div>
+            </div>
+            <table class="rules-table">
+                <thead>
+                    <tr>
+                        <th>规则名称</th>
+                        <th>严重程度</th>
+                        <th>目标</th>
+                        <th>匹配模式</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="rules-table-body"></tbody>
+            </table>
+        </div>
+    </div>
+    <script>
+        let flowChart, latencyChart;
+        let lastStats = { total_published: 0, total_consumed: 0, total_intercepted: 0 };
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function formatUptime(seconds) {
+            const d = Math.floor(seconds / 86400);
+            const h = Math.floor((seconds % 86400) / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            if (d > 0) return `${d}d ${h}h ${m}m`;
+            if (h > 0) return `${h}h ${m}m ${s}s`;
+            return `${m}m ${s}s`;
+        }
+
+        function updateHAStatus(haInfo) {
+            const badge = document.getElementById('ha-status');
+            badge.className = 'status-badge';
+            if (haInfo.is_active) {
+                badge.classList.add('status-active');
+                badge.textContent = '活动节点';
+            } else if (haInfo.is_standby) {
+                badge.classList.add('status-standby');
+                badge.textContent = '待机节点';
+            } else {
+                badge.classList.add('status-fault');
+                badge.textContent = '故障';
+            }
+            document.getElementById('uptime').textContent = formatUptime(haInfo.uptime);
+        }
+
+        function updateStats(stats) {
+            const audit = stats.audit || {};
+            const ha = stats.ha || {};
+
+            updateHAStatus(ha);
+
+            document.getElementById('published-count').textContent = audit.total_published || 0;
+            document.getElementById('consumed-count').textContent = audit.total_consumed || 0;
+            document.getElementById('intercepted-count').textContent = audit.total_intercepted || 0;
+
+            const totalMessages = audit.total_messages || 1;
+            const interceptRate = ((audit.total_intercepted || 0) / totalMessages * 100).toFixed(2);
+            document.getElementById('intercept-rate').textContent = interceptRate;
+
+            document.getElementById('total-bytes').textContent = formatBytes(audit.total_bytes || 0);
+
+            const uptime = ha.uptime || 1;
+            const publishRate = ((audit.total_published || 0) / uptime).toFixed(2);
+            const consumeRate = ((audit.total_consumed || 0) / uptime).toFixed(2);
+            document.getElementById('publish-rate').textContent = publishRate;
+            document.getElementById('consume-rate').textContent = consumeRate;
+
+            lastStats = { ...lastStats, ...audit };
+        }
+
+        function initCharts() {
+            const flowCtx = document.getElementById('flowChart').getContext('2d');
+            flowChart = new Chart(flowCtx, {
+                type: 'line',
+                data: { labels: [], datasets: [
+                    { label: '发布', data: [], borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', tension: 0.4 },
+                    { label: '消费', data: [], borderColor: '#38bdf8', backgroundColor: 'rgba(56,189,248,0.1)', tension: 0.4 },
+                    { label: '拦截', data: [], borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', tension: 0.4 }
+                ]},
+                options: { responsive: true, plugins: { legend: { labels: { color: '#94a3b8' } } }, scales: { x: { grid: { color: '#334155' }, ticks: { color: '#64748b' } }, y: { grid: { color: '#334155' }, ticks: { color: '#64748b' } } } }
+            });
+
+            const latencyCtx = document.getElementById('latencyChart').getContext('2d');
+            latencyChart = new Chart(latencyCtx, {
+                type: 'line',
+                data: { labels: [], datasets: [
+                    { label: '平均延迟', data: [], borderColor: '#a855f7', backgroundColor: 'rgba(168,85,247,0.1)', tension: 0.4 },
+                    { label: 'P99延迟', data: [], borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.1)', tension: 0.4 }
+                ]},
+                options: { responsive: true, plugins: { legend: { labels: { color: '#94a3b8' } } }, scales: { x: { grid: { color: '#334155' }, ticks: { color: '#64748b' } }, y: { grid: { color: '#334155' }, ticks: { color: '#64748b' } } } }
+            });
+        }
+
+        function updateFlowChart(data) {
+            const labels = data.trend.map(d => new Date(d.timestamp * 1000).toLocaleTimeString());
+            const published = data.trend.map(d => d.published);
+            const consumed = data.trend.map(d => d.consumed);
+            const intercepted = data.trend.map(d => d.intercepted);
+
+            flowChart.data.labels = labels.slice(-30);
+            flowChart.data.datasets[0].data = published.slice(-30);
+            flowChart.data.datasets[1].data = consumed.slice(-30);
+            flowChart.data.datasets[2].data = intercepted.slice(-30);
+            flowChart.update('none');
+        }
+
+        function updateLatencyChart(data) {
+            const labels = data.trend.map(d => new Date(d.timestamp * 1000).toLocaleTimeString());
+            const avg = data.trend.map(d => d.avg);
+            const p99 = data.trend.map(d => d.p99);
+
+            latencyChart.data.labels = labels.slice(-30);
+            latencyChart.data.datasets[0].data = avg.slice(-30);
+            latencyChart.data.datasets[1].data = p99.slice(-30);
+            latencyChart.update('none');
+        }
+
+        async function loadRules() {
+            try {
+                const response = await axios.get('/api/rules');
+                const rules = response.data.rules || [];
+                const tbody = document.getElementById('rules-table-body');
+                tbody.innerHTML = rules.map(rule => `
+                    <tr>
+                        <td>${rule.name}</td>
+                        <td><span class="severity-badge severity-${rule.severity}">${rule.severity.toUpperCase()}</span></td>
+                        <td>${rule.target}</td>
+                        <td><code style="font-size:0.75rem;color:#64748b">${rule.pattern.substring(0, 40)}...</code></td>
+                        <td><div class="rule-toggle ${rule.enabled ? 'enabled' : 'disabled'}" onclick="toggleRule('${rule.id}', ${!rule.enabled})"></div></td>
+                        <td><button class="btn btn-danger" onclick="toggleRule('${rule.id}', ${!rule.enabled})">${rule.enabled ? '禁用' : '启用'}</button></td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Failed to load rules:', error);
+            }
+        }
+
+        async function toggleRule(ruleId, enable) {
+            try {
+                const url = enable ? `/api/rules/${ruleId}/enable` : `/api/rules/${ruleId}/disable`;
+                await axios.post(url);
+                loadRules();
+            } catch (error) {
+                console.error('Failed to toggle rule:', error);
+            }
+        }
+
+        async function reloadRules() {
+            try {
+                await axios.post('/api/rules/reload');
+                loadRules();
+            } catch (error) {
+                console.error('Failed to reload rules:', error);
+            }
+        }
+
+        async function fetchData() {
+            try {
+                const statsResponse = await axios.get('/api/stats');
+                updateStats(statsResponse.data);
+
+                const flowResponse = await axios.get('/api/stats/flow');
+                updateFlowChart(flowResponse.data);
+
+                const latencyResponse = await axios.get('/api/stats/latency');
+                updateLatencyChart(latencyResponse.data);
+            } catch (error) {
+                console.error('Failed to fetch data:', error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            loadRules();
+            fetchData();
+            setInterval(fetchData, 5000);
+            setInterval(loadRules, 30000);
+        });
+    </script>
+</body>
+</html>
