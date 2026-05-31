@@ -1,0 +1,46 @@
+local:
+  asn: 65001
+  router_id: 127.0.0.1
+  listen_host: 127.0.0.1
+  listen_port: 1790
+
+peers:
+  - name: threat-intel-a
+    asn: 65100
+    address: 127.0.0.1
+    port: 1791
+    priority: 100
+  - name: threat-intel-b
+    asn: 65200
+    address: 127.0.0.1
+    port: 1792
+    priority: 50
+
+threat_community:
+  base_asn: 65535
+  # community value 65535:<1..5> means malicious level 1..5
+
+redis:
+  addr: 127.0.0.1:6379
+  password: ""
+  db: 0
+  key_prefix: "iprep:"
+
+http:
+  listen: ":8080"
+
+sync:
+  # seconds to wait for full table synchronization at startup
+  startup_wait: 30
+
+ml:
+  enabled: true
+  model_path: "models/isolation_forest.onnx"
+  # weight for BGP reputation level (0.0 - 1.0); ML score weight = 1.0 - bgp_weight
+  bgp_weight: 0.6
+  # behavior feature collection window in seconds
+  feature_window: 3600
+  # number of path categories to track
+  path_categories: 8
+  # minimum requests required before ML scoring kicks in
+  min_samples: 10
