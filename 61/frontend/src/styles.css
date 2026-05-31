@@ -1,0 +1,256 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  background: #0f1220;
+  color: #e8ebff;
+}
+
+.app {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+header.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  background: linear-gradient(90deg, #1a1d36, #20244a);
+  border-bottom: 1px solid #2a2f55;
+}
+
+header.app-header h1 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: 0.3px;
+}
+
+.role-selector {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.role-selector input,
+.role-selector select,
+.task-form select,
+.task-form input {
+  background: #151a33;
+  color: #e8ebff;
+  border: 1px solid #2a2f55;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+button {
+  background: linear-gradient(180deg, #4a5cff, #3b4ad8);
+  border: none;
+  color: white;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+button:hover {
+  filter: brightness(1.1);
+}
+
+button.secondary {
+  background: #2a2f55;
+  color: #cfd3f2;
+}
+
+button.danger {
+  background: #c0392b;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+main {
+  flex: 1;
+  padding: 20px 24px;
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+}
+
+.panel {
+  background: #15192e;
+  border: 1px solid #242a50;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.panel h2 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  color: #a5b4ff;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.task-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.task-form .row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.task-form label {
+  font-size: 13px;
+  color: #a5b4ff;
+  min-width: 100px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 10px;
+  background: #1a1f3d;
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+
+.progress-bar > div {
+  height: 100%;
+  background: linear-gradient(90deg, #4a5cff, #22d3ee);
+  transition: width 0.2s;
+}
+
+.node-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.node-item {
+  padding: 10px 12px;
+  background: #1a1f3d;
+  border: 1px solid #2a2f55;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.node-item .meta {
+  font-size: 12px;
+  color: #8a93c8;
+}
+
+.node-item .status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #4a5cff;
+}
+
+.node-item.idle .status-dot {
+  background: #555d85;
+}
+
+.node-item.busy .status-dot {
+  background: #f39c12;
+  animation: pulse 1.2s infinite;
+}
+
+.node-item.done .status-dot {
+  background: #27ae60;
+}
+
+.node-item.error .status-dot {
+  background: #e74c3c;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.result-box {
+  background: #0e1225;
+  border: 1px solid #2a2f55;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-family: 'Menlo', 'Consolas', monospace;
+  font-size: 13px;
+  max-height: 260px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.log-box {
+  background: #0b0e1f;
+  border: 1px solid #2a2f55;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-family: 'Menlo', 'Consolas', monospace;
+  font-size: 12px;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.log-entry {
+  padding: 2px 0;
+  color: #9aa4d4;
+}
+
+.log-entry.error { color: #ff7b72; }
+.log-entry.success { color: #5ad1a2; }
+.log-entry.info { color: #7aa2ff; }
+
+.badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #2a2f55;
+  color: #cfd3f2;
+}
+
+.badge.master { background: #3b4ad8; }
+.badge.worker { background: #0e7490; }
+
+.footer-note {
+  text-align: center;
+  color: #6b76a8;
+  font-size: 12px;
+  padding: 12px;
+}
+
+@media (max-width: 900px) {
+  main {
+    grid-template-columns: 1fr;
+  }
+}
