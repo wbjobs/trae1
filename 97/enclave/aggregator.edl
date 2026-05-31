@@ -1,0 +1,43 @@
+# 安全聚合服务 EDL 接口
+enclave {
+    trusted {
+        # 初始化 enclave：生成 ECDH 密钥对
+        public int ecall_enclave_init();
+
+        # 获取 enclave 的 ECDH 公钥（用于 quote 绑定）
+        public int ecall_get_enclave_ecdh_pub(
+            [out, size=65] uint8_t pubkey[65]
+        );
+
+        # 会话密钥派生（在 enclave 内完成，不暴露）
+        public int ecall_derive_session_key(
+            [in, size=65] const uint8_t client_pub[65],
+            uint64_t session_id,
+            [out, size=32] uint8_t derived_key[32]
+        );
+
+        # 加密数据提交：host 已经用会话密钥解密出 plaintext，enclave 负责校验和聚合
+        # 同时提供 MAC（AAD 包含 session_id，防止篡改）
+        public int ecall_submit_records(
+            [in, size=plain_len] const uint8_t* plaintext, size_t plain_len
+        );
+
+        # 获取聚合结果（固定 128 字节缓冲区，实际约 72 字节）
+        public int ecall_get_aggregates(
+            [out, size=128] uint8_t* out_buf, size_t out_len
+        );
+
+        # 远程认证：生成 enclave 的 quote，quote 中包含 enclave 内部 ECDH 公钥（无需传入）
+        public int ecall_get_quote(
+            [out, size=quote_buf_size] uint8_t* quote_buf, size_t quote_buf_size,
+            [out] size_t* quote_len
+        );
+    };
+
+    untrusted {
+        # enclave 需要安全随机数时回调 host
+        void ocall_get_random(
+            [out, size=len] uint8_t* buf, size_t len
+        );
+    };
+};
