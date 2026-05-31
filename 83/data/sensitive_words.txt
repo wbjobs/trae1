@@ -1,0 +1,34 @@
+# VNC Watermark Audit Proxy - Sensitive Words Configuration
+# Lines starting with # are comments
+# One word per line, supports Chinese and English
+# Hot-reload: send SIGUSR1 or SIGHUP to the proxy process
+
+# --- 中文敏感词 ---
+财务数据
+客户信息
+源代码
+机密
+绝密
+身份证
+银行卡
+密码
+口令
+密钥
+工资表
+财务报表
+个人信息
+隐私数据
+商业秘密
+内部资料
+严禁外传
+ confidential
+secret
+# --- 英文敏感词 ---
+password
+confidential
+secret
+credit card
+social security
+api key
+private key
+access token
