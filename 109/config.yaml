@@ -1,0 +1,69 @@
+ddos_mitigator:
+  name: "DDoS Traffic Diversion System"
+  dry_run: false
+
+sflow:
+  listen_port: 6343
+  listen_address: "0.0.0.0"
+  sampling_rate: 1000
+
+threshold:
+  traffic_multiplier: 3.0
+  baseline_window: 300
+  detection_window: 60
+  rule_expire_seconds: 30
+
+escalation:
+  enabled: true
+  check_interval: 10
+  upgrade_threshold: 3
+
+ml:
+  enabled: true
+  model_path: "attack_classifier.pkl"
+  confidence_threshold: 0.7
+  retrain_interval_days: 7
+  target_accuracy: 0.95
+  inference_timeout_ms: 3000
+  feature_window_seconds: 60
+
+scrubbing_center:
+  ip: "10.0.0.1"
+  redirect_next_hop: "10.0.0.2"
+  waf_ip: "10.0.0.3"
+
+tiered_policy:
+  tiers:
+    - level: 1
+      name: "low"
+      max_rate: 50
+      action: "redirect"
+      description: "Traffic < 50Gbps, redirect to scrubbing center"
+    - level: 2
+      name: "medium"
+      max_rate: 100
+      action: "rate-limit"
+      rate_limit: 50
+      description: "50-100Gbps, redirect + rate limit to 50Gbps"
+    - level: 3
+      name: "high"
+      max_rate: 1000
+      action: "selective-drop"
+      description: ">100Gbps, drop UDP, keep TCP"
+
+exabgp:
+  socket_path: "/var/run/exabgp/exabgp.sock"
+  local_as: 65001
+  local_ip: "192.168.1.1"
+  router_ip: "192.168.1.2"
+  router_as: 65000
+
+influxdb:
+  url: "http://localhost:8086"
+  token: "your-influxdb-token"
+  org: "ddos_mitigation"
+  bucket: "ddos_metrics"
+
+api:
+  host: "0.0.0.0"
+  port: 8000
