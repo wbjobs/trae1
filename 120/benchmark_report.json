@@ -1,0 +1,39 @@
+{
+  "config": {
+    "concurrency": 10,
+    "duration_secs": 5,
+    "warmup_secs": 5,
+    "targets": [
+      "Axum"
+    ],
+    "scenarios": [
+      "Json"
+    ],
+    "repeat": 1,
+    "timeout_secs": 300,
+    "debug_crash": false,
+    "profile": {
+      "enabled": true,
+      "sampling_freq_hz": 99,
+      "duration_secs": 5,
+      "generate_svg": true,
+      "low_overhead_mode": true
+    }
+  },
+  "results": [
+    {
+      "framework": "Axum",
+      "scenarios": {},
+      "run_number": 1,
+      "status": "BuildFailed",
+      "crash_info": {
+        "reason": "Spawn failed: Binary not found: \\\\?\\E:\\trae1\\120\\target\\release\\axum-server. Run cargo build --release -p axum-server first.",
+        "peak_memory_mb": 0.0,
+        "crash_log": null,
+        "timestamp": "2026-05-26T10:32:46.045885200+08:00"
+      },
+      "profiles": {}
+    }
+  ],
+  "timestamp": "2026-05-26T10:32:49.060509300+08:00"
+}

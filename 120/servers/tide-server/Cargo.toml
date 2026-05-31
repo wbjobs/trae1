@@ -1,0 +1,21 @@
+[package]
+name = "tide-server"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "tide-server"
+path = "src/main.rs"
+
+[dependencies]
+common = { path = "../../common" }
+tide = { version = "0.16", features = ["h1-server"] }
+tide-websockets = "0.4"
+async-std = { version = "1.0", features = ["attributes"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tera = "1.19"
+once_cell = "1.19"
+mime_guess = "2.0"
+chrono = "0.4"
+futures-util = "0.3"
