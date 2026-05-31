@@ -1,0 +1,28 @@
+{
+    "key_pairs": [
+        {
+            "key_id": "base64_encoded_key_id_1",
+            "private_key": "base64_encoded_private_key_1",
+            "public_key": "base64_encoded_public_key_1",
+            "valid_from": 1717200000,
+            "valid_until": 1717286400,
+            "kdf_id": 1,
+            "aead_id": 2,
+            "maximum_name_length": 255,
+            "public_name": "public.example.com"
+        },
+        {
+            "key_id": "base64_encoded_key_id_2",
+            "private_key": "base64_encoded_private_key_2",
+            "public_key": "base64_encoded_public_key_2",
+            "valid_from": 1717286400,
+            "valid_until": 1717372800,
+            "kdf_id": 1,
+            "aead_id": 2,
+            "maximum_name_length": 255,
+            "public_name": "public.example.com"
+        }
+    ],
+    "key_rotation_interval": 3600,
+    "fallback_enabled": true
+}

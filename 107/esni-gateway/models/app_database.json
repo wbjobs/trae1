@@ -1,0 +1,56 @@
+[
+  {
+    "id": 0,
+    "name": "google",
+    "category": "search",
+    "confidence_threshold": 0.5
+  },
+  {
+    "id": 1,
+    "name": "facebook",
+    "category": "social",
+    "confidence_threshold": 0.5
+  },
+  {
+    "id": 2,
+    "name": "twitter",
+    "category": "social",
+    "confidence_threshold": 0.5
+  },
+  {
+    "id": 3,
+    "name": "netflix",
+    "category": "streaming",
+    "confidence_threshold": 0.5
+  },
+  {
+    "id": 4,
+    "name": "amazon",
+    "category": "ecommerce",
+    "confidence_threshold": 0.5
+  },
+  {
+    "id": 5,
+    "name": "apple",
+    "category": "technology",
+    "confidence_threshold": 0.5
+  },
+  {
+    "id": 6,
+    "name": "microsoft",
+    "category": "technology",
+    "confidence_threshold": 0.5
+  },
+  {
+    "id": 7,
+    "name": "cloudflare",
+    "category": "infrastructure",
+    "confidence_threshold": 0.5
+  },
+  {
+    "id": 8,
+    "name": "unknown",
+    "category": "unknown",
+    "confidence_threshold": 0.5
+  }
+]

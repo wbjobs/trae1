@@ -1,0 +1,8 @@
+# Block list example
+# One domain per line, lines starting with # are comments
+# Wildcards are supported: *.example.com
+
+malware.com
+phishing.net
+*.evil.com
+spam.org

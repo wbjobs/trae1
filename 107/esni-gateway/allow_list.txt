@@ -1,0 +1,8 @@
+# Allow list example (for whitelist mode)
+# One domain per line, lines starting with # are comments
+# Wildcards are supported: *.example.com
+
+google.com
+github.com
+*.cloudflare.com
+rust-lang.org

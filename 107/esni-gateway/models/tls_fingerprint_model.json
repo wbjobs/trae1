@@ -1,0 +1,44 @@
+{
+  "input_shape": [490],
+  "num_classes": 9,
+  "conv_layers": [
+    {
+      "input_channels": 1,
+      "output_channels": 16,
+      "kernel_size": 3,
+      "stride": 1,
+      "weights": "base64_encoded_weights",
+      "biases": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    },
+    {
+      "input_channels": 16,
+      "output_channels": 32,
+      "kernel_size": 3,
+      "stride": 1,
+      "weights": "base64_encoded_weights",
+      "biases": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    },
+    {
+      "input_channels": 32,
+      "output_channels": 64,
+      "kernel_size": 3,
+      "stride": 1,
+      "weights": "base64_encoded_weights",
+      "biases": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    }
+  ],
+  "fc_layers": [
+    {
+      "input_size": 1280,
+      "output_size": 128,
+      "weights": "base64_encoded_weights",
+      "biases": []
+    },
+    {
+      "input_size": 128,
+      "output_size": 9,
+      "weights": "base64_encoded_weights",
+      "biases": []
+    }
+  ]
+}

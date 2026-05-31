@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  esni-gateway:
+    build: .
+    ports:
+      - "443:443"
+      - "9090:9090"
+    volumes:
+      - ./block_list.txt:/etc/esni-gateway/block_list.txt:ro
+      - ./allow_list.txt:/etc/esni-gateway/allow_list.txt:ro
+    command:
+      - --listen
+      - 0.0.0.0:443
+      - --metrics-addr
+      - 0.0.0.0:9090
+      - --block-list
+      - /etc/esni-gateway/block_list.txt
+      - --workers
+      - "4"
+      - --log-level
+      - info
+    restart: unless-stopped
+    networks:
+      - esni-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    restart: unless-stopped
+    networks:
+      - esni-network
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    restart: unless-stopped
+    networks:
+      - esni-network
+
+networks:
+  esni-network:
+    driver: bridge
