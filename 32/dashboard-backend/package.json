@@ -1,0 +1,14 @@
+{
+  "name": "dashboard-backend",
+  "version": "1.0.0",
+  "description": "Aggregates risk control events from Kafka and exposes dashboard metrics via HTTP",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "ioredis": "^5.3.2",
+    "kafkajs": "^2.2.4"
+  }
+}

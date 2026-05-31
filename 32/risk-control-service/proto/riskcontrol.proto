@@ -1,0 +1,127 @@
+syntax = "proto3";
+
+package riskcontrol;
+
+enum Decision {
+  PASS = 0;
+  REJECT = 1;
+  VERIFY = 2;
+}
+
+enum Strategy {
+  NONE = 0;
+  SLIDING_WINDOW = 1 [deprecated = true];
+  TOKEN_BUCKET = 2 [deprecated = true];
+  BLACKLIST = 3;
+  RATE_LIMIT = 4;
+}
+
+message CheckRequest {
+  string user_id = 1;
+  string action_type = 2;
+  int64 timestamp = 3;
+  map<string, string> metadata = 4;
+}
+
+message CheckResponse {
+  Decision decision = 1;
+  Strategy hit_strategy = 2;
+  string reason = 3;
+  int64 request_id = 4;
+  int64 latency_ms = 5;
+}
+
+message StrategyConfig {
+  string action_type = 1;
+  int64 window_ms = 2;
+  int64 max_requests = 3;
+  double bucket_capacity = 4;
+  double refill_rate = 5;
+}
+
+message RateLimitConfig {
+  string action_type = 1;
+  int64 max_burst = 2;
+  int64 count_per_period = 3;
+  int64 period_seconds = 4;
+}
+
+message GetStrategiesRequest {}
+
+message GetStrategiesResponse {
+  repeated RateLimitConfig rate_limits = 1;
+  int64 updated_at = 2;
+}
+
+message UpdateStrategyRequest {
+  string action_type = 1;
+  int64 max_burst = 2;
+  int64 count_per_period = 3;
+  int64 period_seconds = 4;
+  string operator = 5;
+  string reason = 6;
+}
+
+message UpdateStrategyResponse {
+  int64 version_id = 1;
+  RateLimitConfig config = 2;
+  int64 created_at = 3;
+}
+
+message ListHistoryRequest {
+  int32 limit = 1;
+}
+
+message HistoryEntry {
+  int64 id = 1;
+  string operator = 2;
+  string action_type = 3;
+  string reason = 4;
+  RateLimitConfig before = 5;
+  RateLimitConfig after = 6;
+  int64 created_at = 7;
+}
+
+message ListHistoryResponse {
+  repeated HistoryEntry entries = 1;
+}
+
+message ListAuditRequest {
+  int32 limit = 1;
+}
+
+message AuditEntry {
+  int64 id = 1;
+  string operator = 2;
+  string action = 3;
+  string target = 4;
+  string before_json = 5;
+  string after_json = 6;
+  string reason = 7;
+  int64 created_at = 8;
+}
+
+message ListAuditResponse {
+  repeated AuditEntry entries = 1;
+}
+
+message RollbackRequest {
+  string operator = 1;
+  string reason = 2;
+}
+
+message RollbackResponse {
+  int64 rolled_back_to_version = 1;
+  string action_type = 2;
+  int64 created_at = 3;
+}
+
+service RiskControlService {
+  rpc Check(CheckRequest) returns (CheckResponse);
+  rpc CheckStream(stream CheckRequest) returns (stream CheckResponse);
+  rpc GetStrategies(GetStrategiesRequest) returns (GetStrategiesResponse);
+  rpc UpdateStrategy(UpdateStrategyRequest) returns (UpdateStrategyResponse);
+  rpc ListHistory(ListHistoryRequest) returns (ListHistoryResponse);
+  rpc ListAudit(ListAuditRequest) returns (ListAuditResponse);
+  rpc Rollback(RollbackRequest) returns (RollbackResponse);
+}
