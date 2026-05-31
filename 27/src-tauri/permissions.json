@@ -1,0 +1,3 @@
+[permissions]
+dialog = ["allow-open", "allow-save", "allow-message"]
+fs = ["allow-read-file", "allow-write-file", "allow-read-dir", "allow-read-text-file"]
