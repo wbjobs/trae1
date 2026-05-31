@@ -1,0 +1,45 @@
+server:
+  port: 8082
+  servlet:
+    context-path: /idempotent
+
+spring:
+  application:
+    name: task-idempotent
+  profiles:
+    active: dev
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+      config:
+        server-addr: 127.0.0.1:8848
+        file-extension: yaml
+  redis:
+    host: 127.0.0.1
+    port: 6379
+    database: 0
+    timeout: 5000
+    lettuce:
+      pool:
+        max-active: 32
+        max-idle: 16
+        min-idle: 4
+
+task:
+  idempotent:
+    key-prefix: task:idempotent
+    default-expire-seconds: 86400
+
+knife4j:
+  enable: true
+  openapi:
+    title: 幂等校验服务API
+    description: 分布式任务幂等重试 - 幂等校验模块
+    version: 1.0.0
+    group:
+      default:
+        group-name: default
+        api-rule: package
+        api-rule-resources:
+          - com.distributed.task.idempotent.controller

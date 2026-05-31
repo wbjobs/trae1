@@ -1,0 +1,46 @@
+server:
+  port: 8084
+  servlet:
+    context-path: /log
+
+spring:
+  application:
+    name: task-log
+  profiles:
+    active: dev
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+      config:
+        server-addr: 127.0.0.1:8848
+        file-extension: yaml
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:3306/task_platform?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false
+    username: root
+    password: root
+    druid:
+      initial-size: 5
+      min-idle: 5
+      max-active: 20
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.distributed.task.common.entity
+  configuration:
+    map-underscore-to-camel-case: true
+
+knife4j:
+  enable: true
+  openapi:
+    title: 日志记录服务API
+    description: 分布式任务幂等重试 - 日志记录模块
+    version: 1.0.0
+    group:
+      default:
+        group-name: default
+        api-rule: package
+        api-rule-resources:
+          - com.distributed.task.log.controller
