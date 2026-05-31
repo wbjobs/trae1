@@ -1,0 +1,14 @@
+{
+  "name": "rtp-quality-monitor-frontend",
+  "version": "1.0.0",
+  "description": "RTP Audio/Video Quality Monitor - Vue3 + ECharts Dashboard",
+  "private": true,
+  "dependencies": {
+    "vue": "^3.4.0",
+    "echarts": "^5.4.3"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  }
+}

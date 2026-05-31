@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RTP Quality Monitor Dashboard</title>
+<script src="https://unpkg.com/vue@3.4.0/dist/vue.global.prod.js"></script>
+<script src="https://unpkg.com/echarts@5.4.3/dist/echarts.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    min-height: 100vh;
+  }
+  header {
+    background: linear-gradient(135deg, #1e293b, #334155);
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #475569;
+  }
+  header h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    background: linear-gradient(90deg, #60a5fa, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .status-dot {
+    display: inline-block;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    margin-right: 8px;
+  }
+  .status-dot.connected { background: #22c55e; box-shadow: 0 0 8px #22c55e; animation: pulse 2s infinite; }
+  .status-dot.disconnected { background: #ef4444; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+  .container { padding: 24px 32px; }
+
+  .stream-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .stream-card {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid #334155;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .stream-card:hover { border-color: #60a5fa; transform: translateY(-2px); }
+  .stream-card.selected { border-color: #60a5fa; background: #1e3a5f; }
+  .stream-card.alert { border-color: #ef4444; animation: alert-pulse 1.5s infinite; }
+  .stream-card.content-anomaly { border-color: #f97316; animation: content-pulse 2s infinite; }
+  @keyframes alert-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); } 50% { box-shadow: 0 0 0 8px rgba(239,68,68,0); } }
+  @keyframes content-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(249,115,22,0.4); } 50% { box-shadow: 0 0 0 8px rgba(249,115,22,0); } }
+
+  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .ssrc { font-family: 'Consolas', monospace; font-size: 0.85rem; color: #94a3b8; }
+  .badge { padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
+  .badge-audio { background: #7c3aed; color: #fff; }
+  .badge-video { background: #0891b2; color: #fff; }
+  .badge-unknown { background: #475569; color: #fff; }
+  .badge-anomaly { background: #f97316; color: #fff; }
+  .badge-normal { background: #22c55e; color: #fff; }
+
+  .ai-score {
+    text-align: center;
+    margin-top: 8px;
+    padding: 6px;
+    background: #0f172a;
+    border-radius: 6px;
+    font-size: 0.8rem;
+  }
+  .ai-score .label { color: #64748b; }
+  .ai-score .value { font-weight: 700; margin-left: 8px; }
+  .ai-score .value.anomaly { color: #f97316; }
+  .ai-score .value.normal { color: #22c55e; }
+
+  .mos-display { font-size: 2.5rem; font-weight: 700; text-align: center; margin: 8px 0; }
+  .mos-excellent { color: #22c55e; }
+  .mos-good { color: #84cc16; }
+  .mos-fair { color: #eab308; }
+  .mos-poor { color: #f97316; }
+  .mos-bad { color: #ef4444; }
+
+  .metrics-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    font-size: 0.75rem;
+  }
+  .metric { background: #0f172a; border-radius: 6px; padding: 6px 8px; }
+  .metric-label { color: #64748b; display: block; margin-bottom: 2px; }
+  .metric-value { color: #e2e8f0; font-weight: 600; }
+
+  .detail-panel {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid #334155;
+    margin-bottom: 24px;
+  }
+  .detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .detail-header h2 { font-size: 1.3rem; }
+  .btn {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+  }
+  .btn-primary { background: #3b82f6; color: #fff; }
+  .btn-primary:hover { background: #2563eb; }
+  .btn-primary:disabled { background: #475569; cursor: not-allowed; }
+
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .chart-box { background: #0f172a; border-radius: 8px; padding: 12px; }
+  .chart-title { font-size: 0.85rem; color: #94a3b8; margin-bottom: 6px; }
+
+  .detail-table {
+    width: 100%;
+    margin-top: 20px;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+  }
+  .detail-table th {
+    background: #334155;
+    padding: 8px;
+    text-align: left;
+    color: #94a3b8;
+    font-weight: 600;
+  }
+  .detail-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid #334155;
+    font-family: 'Consolas', monospace;
+  }
+  .detail-table tr:hover td { background: #1e3a5f; }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: #64748b; }
+  .empty-state h3 { font-size: 1.2rem; margin-bottom: 8px; }
+
+  .ai-detail { margin-top: 20px; }
+  .ai-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+  }
+  .ai-metric {
+    background: #0f172a;
+    border-radius: 8px;
+    padding: 12px;
+  }
+  .ai-metric-label { color: #64748b; font-size: 0.75rem; margin-bottom: 4px; }
+  .ai-metric-value { font-weight: 700; font-size: 1.1rem; color: #e2e8f0; }
+  .ai-metric-value.anomaly { color: #f97316; }
+
+  .anomaly-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+  .anomaly-tag {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .anomaly-tag.audio { background: rgba(124,58,237,0.2); color: #a78bfa; border: 1px solid #7c3aed; }
+  .anomaly-tag.video { background: rgba(8,145,178,0.2); color: #22d3ee; border: 1px solid #0891b2; }
+
+  @media (max-width: 768px) {
+    .charts-grid { grid-template-columns: 1fr; }
+    .container { padding: 16px; }
+    header { padding: 12px 16px; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script type="module">
+const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vue;
+
+const app = createApp({
+  template: `
+    <div>
+      <header>
+        <h1>RTP Quality Monitor</h1>
+        <div>
+          <span class="status-dot" :class="wsConnected ? 'connected' : 'disconnected'"></span>
+          <span style="font-size: 0.85rem; color: #94a3b8;">
+            {{ wsConnected ? 'Connected' : 'Disconnected' }} · Streams: {{ streams.length }}
+          </span>
+        </div>
+      </header>
+
+      <div class="container">
+        <div v-if="streams.length === 0" class="empty-state">
+          <h3>No RTP streams detected</h3>
+          <p>Start monitoring from the desktop app or send RTP packets to ports 5000-6000</p>
+        </div>
+
+        <div class="stream-grid">
+          <div
+            v-for="stream in streams"
+            :key="stream.ssrc_int"
+            class="stream-card"
+            :class="{
+              selected: selectedSsrc === stream.ssrc_int,
+              alert: isAlert(stream),
+              'content-anomaly': hasContentAnomaly(stream)
+            }"
+            @click="selectStream(stream)"
+          >
+            <div class="card-header">
+              <span class="ssrc">{{ stream.ssrc }}</span>
+              <div style="display: flex; gap: 4px; align-items: center;">
+                <span v-if="stream.ai && stream.ai.is_anomaly" class="badge badge-anomaly">⚠️ {{ stream.ai.anomaly_score.toFixed(0) }}</span>
+                <span v-else-if="stream.ai" class="badge badge-normal">✓ {{ stream.ai.anomaly_score.toFixed(0) }}</span>
+                <span class="badge" :class="'badge-' + stream.media_kind">
+                  {{ stream.media_kind.toUpperCase() }}
+                </span>
+              </div>
+            </div>
+            <div class="mos-display" :class="mosClass(stream.latest?.mos)">
+              {{ stream.latest ? stream.latest.mos.toFixed(2) : '-' }}
+            </div>
+            <div style="text-align: center; color: #64748b; font-size: 0.75rem; margin-bottom: 10px;">
+              MOS Score
+            </div>
+            <div v-if="stream.ai" class="ai-score">
+              <span class="label">AI Score:</span>
+              <span class="value" :class="{ anomaly: stream.ai.is_anomaly, normal: !stream.ai.is_anomaly }">
+                {{ stream.ai.anomaly_score.toFixed(1) }} / {{ stream.ai.threshold.toFixed(0) }}
+              </span>
+            </div>
+            <div v-if="stream.ai && (stream.ai.audio_anomalies?.length || stream.ai.video_anomalies?.length)"
+                 style="text-align: center; margin-top: 6px; font-size: 0.7rem; color: #f97316;">
+              <span v-if="stream.ai.audio_anomalies?.length">🎧 {{ stream.ai.audio_anomalies.join(', ') }}</span>
+              <span v-if="stream.ai.video_anomalies?.length">📹 {{ stream.ai.video_anomalies.join(', ') }}</span>
+            </div>
+            <div class="metrics-row">
+              <div class="metric">
+                <span class="metric-label">Loss</span>
+                <span class="metric-value">{{ stream.latest ? (stream.latest.loss_rate * 100).toFixed(1) + '%' : '-' }}</span>
+              </div>
+              <div class="metric">
+                <span class="metric-label">Jitter</span>
+                <span class="metric-value">{{ stream.latest ? stream.latest.jitter.toFixed(1) + 'ms' : '-' }}</span>
+              </div>
+              <div class="metric">
+                <span class="metric-label">Delay</span>
+                <span class="metric-value">{{ stream.latest ? stream.latest.delay.toFixed(0) + 'ms' : '-' }}</span>
+              </div>
+              <div class="metric">
+                <span class="metric-label">Pkts</span>
+                <span class="metric-value">{{ stream.total_packets }}</span>
+              </div>
+              <div class="metric">
+                <span class="metric-label">Codec</span>
+                <span class="metric-value" style="font-size: 0.7rem;">{{ stream.codec || '-' }}</span>
+              </div>
+              <div class="metric">
+                <span class="metric-label">Source</span>
+                <span class="metric-value" style="font-size: 0.65rem;">{{ stream.source_ip }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="selectedStream" class="detail-panel">
+          <div class="detail-header">
+            <h2>{{ selectedStream.ssrc }} · {{ selectedStream.media_kind.toUpperCase() }} · {{ selectedStream.codec }}</h2>
+            <div>
+              <button class="btn btn-primary" @click="exportReport">Export PDF Report</button>
+            </div>
+          </div>
+
+          <div class="charts-grid">
+            <div class="chart-box">
+              <div class="chart-title">MOS Score (Last 10s)</div>
+              <div ref="mosChartRef" style="width: 100%; height: 220px;"></div>
+            </div>
+            <div class="chart-box">
+              <div class="chart-title">Loss Rate & Jitter</div>
+              <div ref="lossChartRef" style="width: 100%; height: 220px;"></div>
+            </div>
+            <div v-if="selectedStream.media_kind === 'video'" class="chart-box">
+              <div class="chart-title">Frame Rate & Bitrate</div>
+              <div ref="videoChartRef" style="width: 100%; height: 220px;"></div>
+            </div>
+            <div class="chart-box">
+              <div class="chart-title">Delay Trend</div>
+              <div ref="delayChartRef" style="width: 100%; height: 220px;"></div>
+            </div>
+          </div>
+
+          <table class="detail-table">
+            <thead>
+              <tr>
+                <th>Time</th><th>Pkts</th><th>Lost</th><th>Loss%</th><th>Jitter</th><th>Delay</th><th>MOS</th><th>FPS</th><th>Bitrate</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="m in detailMetrics" :key="m.timestamp">
+                <td>{{ formatTime(m.timestamp) }}</td>
+                <td>{{ m.packet_count }}</td>
+                <td>{{ m.lost_packets }}</td>
+                <td>{{ (m.loss_rate * 100).toFixed(2) }}%</td>
+                <td>{{ m.jitter.toFixed(2) }}ms</td>
+                <td>{{ m.delay.toFixed(1) }}ms</td>
+                <td>{{ m.mos.toFixed(2) }}</td>
+                <td>{{ m.fps.toFixed(1) }}</td>
+                <td>{{ m.bitrate.toFixed(1) }}kbps</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div v-if="aiDetail" class="ai-detail">
+            <h3 style="margin-top: 20px; margin-bottom: 12px; font-size: 1.1rem;">
+              🤖 AI Content Analysis
+              <span :class="['badge', aiDetail.is_anomaly ? 'badge-anomaly' : 'badge-normal']" style="margin-left: 10px;">
+                {{ aiDetail.is_anomaly ? 'CONTENT ANOMALY' : 'Normal' }}
+              </span>
+            </h3>
+            <div class="ai-metrics-grid">
+              <div class="ai-metric">
+                <div class="ai-metric-label">Anomaly Score</div>
+                <div class="ai-metric-value" :class="{ anomaly: aiDetail.is_anomaly }">
+                  {{ aiDetail.anomaly_score.toFixed(1) }} / {{ aiDetail.threshold.toFixed(0) }}
+                </div>
+              </div>
+              <div class="ai-metric">
+                <div class="ai-metric-label">Root Cause</div>
+                <div class="ai-metric-value">{{ aiDetail.root_cause || 'N/A' }}</div>
+              </div>
+              <div class="ai-metric">
+                <div class="ai-metric-label">Confidence</div>
+                <div class="ai-metric-value">{{ (aiDetail.root_cause_confidence * 100).toFixed(1) }}%</div>
+              </div>
+              <div class="ai-metric">
+                <div class="ai-metric-label">RTP Loss Rate</div>
+                <div class="ai-metric-value">{{ (aiDetail.rtp_loss_rate * 100).toFixed(2) }}%</div>
+              </div>
+              <div class="ai-metric">
+                <div class="ai-metric-label">RTP Jitter</div>
+                <div class="ai-metric-value">{{ aiDetail.rtp_jitter?.toFixed(2) }}ms</div>
+              </div>
+              <div class="ai-metric">
+                <div class="ai-metric-label">RTP MOS</div>
+                <div class="ai-metric-value">{{ aiDetail.rtp_mos?.toFixed(2) }}</div>
+              </div>
+            </div>
+
+            <div v-if="aiDetail.audio_anomalies?.length || aiDetail.video_anomalies?.length"
+                 style="margin-top: 16px;">
+              <div style="margin-bottom: 8px; color: #94a3b8;">Detected Anomalies:</div>
+              <div class="anomaly-tags">
+                <span v-for="a in aiDetail.audio_anomalies" :key="'a'+a" class="anomaly-tag audio">🎧 {{ a }}</span>
+                <span v-for="v in aiDetail.video_anomalies" :key="'v'+v" class="anomaly-tag video">📹 {{ v }}</span>
+              </div>
+            </div>
+
+            <div v-if="hasAiScores" style="margin-top: 20px;">
+              <div class="chart-box">
+                <div class="chart-title">AI Analysis Scores</div>
+                <div ref="aiChartRef" style="width: 100%; height: 250px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `,
+
+  setup() {
+    const streams = ref([]);
+    const selectedSsrc = ref(null);
+    const wsConnected = ref(false);
+    const detailMetrics = ref([]);
+    const aiDetail = ref(null);
+    const mosChartRef = ref(null);
+    const lossChartRef = ref(null);
+    const videoChartRef = ref(null);
+    const delayChartRef = ref(null);
+    const aiChartRef = ref(null);
+    let mosChart = null, lossChart = null, videoChart = null, delayChart = null, aiChart = null;
+    let ws = null;
+    let metricsPollTimer = null;
+
+    const selectedStream = computed(() =>
+      streams.value.find(s => s.ssrc_int === selectedSsrc.value) || null
+    );
+
+    const hasAiScores = computed(() => {
+      if (!aiDetail.value) return false;
+      return (aiDetail.value.audio_scores && Object.keys(aiDetail.value.audio_scores).length > 0) ||
+             (aiDetail.value.video_scores && Object.keys(aiDetail.value.video_scores).length > 0);
+    });
+
+    function mosClass(mos) {
+      if (mos == null) return 'mos-bad';
+      if (mos >= 4.0) return 'mos-excellent';
+      if (mos >= 3.5) return 'mos-good';
+      if (mos >= 3.0) return 'mos-fair';
+      if (mos >= 2.0) return 'mos-poor';
+      return 'mos-bad';
+    }
+
+    function isAlert(stream) {
+      return stream.latest && stream.latest.mos < 3.0;
+    }
+
+    function hasContentAnomaly(stream) {
+      return stream.ai && stream.ai.is_anomaly;
+    }
+
+    function formatTime(ts) {
+      const d = new Date(ts * 1000);
+      return d.toTimeString().substring(0, 8);
+    }
+
+    function selectStream(stream) {
+      selectedSsrc.value = stream.ssrc_int;
+      fetchDetail(stream.ssrc_int);
+      nextTick(initCharts);
+    }
+
+    async function fetchStreams() {
+      try {
+        const res = await fetch('/api/streams');
+        const data = await res.json();
+        streams.value = data.streams || [];
+      } catch (e) { /* ignore */ }
+    }
+
+    async function fetchDetail(ssrc) {
+      try {
+        const res = await fetch(`/api/streams/${ssrc}`);
+        const data = await res.json();
+        detailMetrics.value = data.metrics || [];
+        aiDetail.value = data.ai || null;
+        nextTick(updateCharts);
+      } catch (e) { /* ignore */ }
+    }
+
+    async function exportReport() {
+      try {
+        const res = await fetch('/api/report', { method: 'POST' });
+        const data = await res.json();
+        if (data.report_path) {
+          alert('Report exported: ' + data.report_path);
+        }
+      } catch (e) {
+        alert('Export failed: ' + e.message);
+      }
+    }
+
+    function connectWebSocket() {
+      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const url = `${proto}//${location.host}/ws`;
+      ws = new WebSocket(url);
+
+      ws.onopen = () => { wsConnected.value = true; fetchStreams(); };
+      ws.onclose = () => { wsConnected.value = false; setTimeout(connectWebSocket, 3000); };
+      ws.onerror = () => ws.close();
+      ws.onmessage = (evt) => {
+        try {
+          const data = JSON.parse(evt.data);
+          if (data.type === 'metrics') {
+            // 合并更新
+            for (const s of data.streams) {
+              const existing = streams.value.find(x => x.ssrc_int === s.ssrc_int);
+              if (existing) {
+                existing.latest = s.latest;
+                existing.media_kind = s.media_kind;
+                existing.codec = s.codec;
+                existing.ai = s.ai;
+              } else {
+                streams.value.push(s);
+              }
+            }
+            // 更新详情
+            if (selectedSsrc.value) {
+              const s = data.streams.find(x => x.ssrc_int === selectedSsrc.value);
+              if (s) {
+                if (s.ai) {
+                  aiDetail.value = s.ai;
+                }
+                if (s.latest) {
+                  const detail = detailMetrics.value;
+                  if (detail.length === 0 || detail[0].timestamp !== s.latest.timestamp) {
+                    if (detail.length >= 10) detail.pop();
+                    detail.unshift(s.latest);
+                    nextTick(updateCharts);
+                  }
+                }
+              }
+            }
+          }
+        } catch (e) { /* ignore */ }
+      };
+    }
+
+    function initCharts() {
+      if (!selectedStream.value) return;
+
+      if (mosChartRef.value && !mosChart) {
+        mosChart = echarts.init(mosChartRef.value, 'dark');
+      }
+      if (lossChartRef.value && !lossChart) {
+        lossChart = echarts.init(lossChartRef.value, 'dark');
+      }
+      if (videoChartRef.value && !videoChart) {
+        videoChart = echarts.init(videoChartRef.value, 'dark');
+      }
+      if (delayChartRef.value && !delayChart) {
+        delayChart = echarts.init(delayChartRef.value, 'dark');
+      }
+      if (aiChartRef.value && !aiChart) {
+        aiChart = echarts.init(aiChartRef.value, 'dark');
+      }
+      updateCharts();
+    }
+
+    function updateCharts() {
+      if (!selectedStream.value) return;
+      const data = [...detailMetrics.value].reverse();
+      const times = data.map(m => formatTime(m.timestamp));
+
+      if (mosChart) {
+        mosChart.setOption({
+          tooltip: { trigger: 'axis' },
+          grid: { top: 10, right: 10, bottom: 25, left: 40 },
+          xAxis: { type: 'category', data: times, axisLabel: { fontSize: 10 } },
+          yAxis: { type: 'value', min: 1, max: 5, axisLabel: { fontSize: 10 } },
+          series: [{
+            name: 'MOS', type: 'line', data: data.map(m => m.mos),
+            smooth: true, lineStyle: { width: 2 },
+            itemStyle: { color: '#22c55e' },
+            areaStyle: { color: 'rgba(34,197,94,0.15)' },
+            markLine: { data: [{ yAxis: 3.0, lineStyle: { color: '#ef4444' }, label: { formatter: 'Threshold' } }] }
+          }]
+        });
+      }
+      if (lossChart) {
+        lossChart.setOption({
+          tooltip: { trigger: 'axis' },
+          legend: { data: ['Loss%', 'Jitter(ms)'], textStyle: { fontSize: 10 }, top: 0 },
+          grid: { top: 30, right: 50, bottom: 25, left: 40 },
+          xAxis: { type: 'category', data: times, axisLabel: { fontSize: 10 } },
+          yAxis: [
+            { type: 'value', name: 'Loss%', axisLabel: { fontSize: 10, formatter: '{value}%' } },
+            { type: 'value', name: 'Jitter', axisLabel: { fontSize: 10, formatter: '{value}ms' } }
+          ],
+          series: [
+            { name: 'Loss%', type: 'bar', data: data.map(m => (m.loss_rate * 100).toFixed(2)), itemStyle: { color: '#f97316' } },
+            { name: 'Jitter(ms)', type: 'line', yAxisIndex: 1, data: data.map(m => m.jitter.toFixed(1)), smooth: true, itemStyle: { color: '#60a5fa' } }
+          ]
+        });
+      }
+      if (videoChart) {
+        videoChart.setOption({
+          tooltip: { trigger: 'axis' },
+          legend: { data: ['FPS', 'Bitrate(kbps)'], textStyle: { fontSize: 10 }, top: 0 },
+          grid: { top: 30, right: 50, bottom: 25, left: 40 },
+          xAxis: { type: 'category', data: times, axisLabel: { fontSize: 10 } },
+          yAxis: [
+            { type: 'value', name: 'FPS', axisLabel: { fontSize: 10 } },
+            { type: 'value', name: 'Bitrate', axisLabel: { fontSize: 10, formatter: '{value}k' } }
+          ],
+          series: [
+            { name: 'FPS', type: 'line', data: data.map(m => m.fps.toFixed(1)), smooth: true, itemStyle: { color: '#a78bfa' }, areaStyle: { color: 'rgba(167,139,250,0.1)' } },
+            { name: 'Bitrate(kbps)', type: 'line', yAxisIndex: 1, data: data.map(m => m.bitrate.toFixed(1)), smooth: true, itemStyle: { color: '#06b6d4' } }
+          ]
+        });
+      }
+      if (delayChart) {
+        delayChart.setOption({
+          tooltip: { trigger: 'axis' },
+          grid: { top: 10, right: 10, bottom: 25, left: 40 },
+          xAxis: { type: 'category', data: times, axisLabel: { fontSize: 10 } },
+          yAxis: { type: 'value', name: 'ms', axisLabel: { fontSize: 10 } },
+          series: [{
+            name: 'Delay', type: 'line', data: data.map(m => m.delay.toFixed(1)),
+            smooth: true, itemStyle: { color: '#eab308' },
+            areaStyle: { color: 'rgba(234,179,8,0.15)' }
+          }]
+        });
+      }
+
+      if (aiChart && aiDetail.value && hasAiScores.value) {
+        const scores = [];
+        const labels = [];
+        if (aiDetail.value.audio_scores) {
+          for (const [k, v] of Object.entries(aiDetail.value.audio_scores)) {
+            labels.push('🎧 ' + k);
+            scores.push(v.toFixed(1));
+          }
+        }
+        if (aiDetail.value.video_scores) {
+          for (const [k, v] of Object.entries(aiDetail.value.video_scores)) {
+            labels.push('📹 ' + k);
+            scores.push(v.toFixed(1));
+          }
+        }
+        aiChart.setOption({
+          tooltip: { trigger: 'axis' },
+          grid: { top: 10, right: 20, bottom: 60, left: 80 },
+          xAxis: {
+            type: 'category',
+            data: labels,
+            axisLabel: { fontSize: 10, rotate: 30, interval: 0 }
+          },
+          yAxis: { type: 'value', min: 0, max: 100, axisLabel: { fontSize: 10 } },
+          series: [{
+            name: 'Score', type: 'bar', data: scores,
+            itemStyle: {
+              color: (params) => params.value > 50 ? '#f97316' : '#22c55e'
+            },
+            barWidth: '50%',
+            markLine: { data: [{ yAxis: 50, lineStyle: { color: '#ef4444', type: 'dashed' }, label: { formatter: 'Threshold' } }] }
+          }]
+        });
+      }
+    }
+
+    function handleResize() {
+      mosChart?.resize();
+      lossChart?.resize();
+      videoChart?.resize();
+      delayChart?.resize();
+      aiChart?.resize();
+    }
+
+    onMounted(() => {
+      fetchStreams();
+      connectWebSocket();
+      metricsPollTimer = setInterval(fetchStreams, 5000);
+      window.addEventListener('resize', handleResize);
+    });
+
+    onUnmounted(() => {
+      ws?.close();
+      clearInterval(metricsPollTimer);
+      window.removeEventListener('resize', handleResize);
+      mosChart?.dispose();
+      lossChart?.dispose();
+      videoChart?.dispose();
+      delayChart?.dispose();
+      aiChart?.dispose();
+    });
+
+    return {
+      streams, selectedSsrc, selectedStream, wsConnected,
+      detailMetrics, aiDetail, hasAiScores,
+      mosChartRef, lossChartRef, videoChartRef, delayChartRef, aiChartRef,
+      mosClass, isAlert, hasContentAnomaly, formatTime, selectStream, exportReport,
+    };
+  }
+});
+
+app.mount('#app');
+</script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+# Wireshark 格式 SRTP 密钥日志文件示例
+#
+# 支持的格式：
+#
+# 1. SRTP_MASTER_KEY (Wireshark 原生 SRTP 格式)
+#    SRTP_MASTER_KEY "from-client" 0x12345678 aabbccddeeff00112233445566778899 aabbccddeeff00112233445566
+#
+# 2. CLIENT_RANDOM (TLS/DTLS 密钥日志，用于 DTLS-SRTP)
+#    CLIENT_RANDOM 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef 0123456789abcdef...48字节master_secret
+#
+# 3. SRTP 通用格式
+#    SRTP from-client 0x12345678 aabbccddeeff00112233445566778899 aabbccddeeff00112233445566 AES_CM_128_HMAC_SHA1_80 header_enc
+#
+# 4. RFC5705_KEYING_MATERIAL_EXPORTER (TLS Exporter 格式)
+#    RFC5705_KEYING_MATERIAL_EXPORTER EXTRACTOR-dtls_srtp <client_random_hex> <server_random_hex> <exporter_data_hex>
+
+# ======== 示例 1: WebRTC 音视频流（已知 SSRC 和 master_key）========
+# 视频流 SSRC=0x12345678 (发送方: 客户端)
+SRTP_MASTER_KEY "from-client" 0x12345678 aabbccddeeff00112233445566778899 aabbccddeeff00112233445566
+
+# 音频流 SSRC=0x87654321 (发送方: 客户端)
+SRTP_MASTER_KEY "from-client" 0x87654321 99887766554433221100ffeeddccbbaa 99887766554433221100ffee
+
+# 视频流 SSRC=0x11223344 (发送方: 服务器)
+SRTP_MASTER_KEY "from-server" 0x11223344 00112233445566778899aabbccddeeff 00112233445566778899aabb
+
+# 音频流 SSRC=0x44332211 (发送方: 服务器)
+SRTP_MASTER_KEY "from-server" 0x44332211 ffeeddccbbaa99887766554433221100 ffeeddccbbaa998877665544
+
+# ======== 示例 2: 头部加密 (SRE) ========
+SRTP from-server 0xAABBCCDD ffeeddccbbaa99887766554433221100 ffeeddccbbaa998877665544 AES_CM_128_HMAC_SHA1_80 header_enc
+
+# ======== 示例 3: AES-256 套件 ========
+SRTP from-client 0x11112222 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f 202122232425262728292a2b2c2d2e2f AES_CM_256_HMAC_SHA1_80
+
+# ======== 示例 4: DTLS-SRTP (需要配合 server_random) ========
+# 当已知 client_random 和 master_secret，但需要导出 SRTP 密钥时使用
+# 需要在 GUI 中手动填入 server_random
+# CLIENT_RANDOM 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef 00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff
