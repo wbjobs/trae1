@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>回合制策略战棋</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="header">
+            <h1>回合制策略战棋</h1>
+            <div id="game-info">
+                <span id="turn-info">回合: 1</span>
+                <span id="current-player">当前玩家: 红方</span>
+                <span id="game-status">准备中...</span>
+            </div>
+            <div id="win-probability">
+                <span class="prob-player1" style="width: 50%"></span>
+                <span class="prob-text">红方 50% : 50% 蓝方</span>
+            </div>
+        </div>
+        
+        <div id="main-area">
+            <canvas id="game-canvas" width="800" height="600"></canvas>
+            
+            <div id="side-panel">
+                <div id="selected-unit-info">
+                    <h3>棋子信息</h3>
+                    <div id="unit-details">
+                        <p>名称: <span id="unit-name">-</span></p>
+                        <p>品质: <span id="unit-rarity">-</span></p>
+                        <p>类型: <span id="unit-type">-</span></p>
+                        <p>等级: <span id="unit-level">-</span></p>
+                        <p>生命: <span id="unit-hp">-</span></p>
+                        <p>攻击: <span id="unit-atk">-</span></p>
+                        <p>防御: <span id="unit-def">-</span></p>
+                        <p>移动: <span id="unit-mov">-</span></p>
+                        <p>范围: <span id="unit-rng">-</span></p>
+                        <p>特性: <span id="unit-traits"></span></p>
+                    </div>
+                </div>
+                
+                <div id="skill-panel">
+                    <h3>技能</h3>
+                    <div id="skill-buttons"></div>
+                </div>
+                
+                <div id="game-log">
+                    <h3>战斗日志</h3>
+                    <div id="log-content"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="control-panel">
+            <button id="btn-start">开始游戏</button>
+            <button id="btn-restart">重新开始</button>
+            <button id="btn-save">保存进度</button>
+            <button id="btn-load">读取进度</button>
+            <button id="btn-undo">撤销上步</button>
+            <button id="btn-end-turn">结束回合</button>
+            <button id="btn-ai-toggle">AI对战</button>
+            <button id="btn-replay">战局回放</button>
+            <button id="btn-multiplayer">联机对战</button>
+            <button id="btn-stats">数据统计</button>
+        </div>
+        
+        <div id="terrain-legend">
+            <h3>地形图例</h3>
+            <div class="legend-item">
+                <div class="legend-color terrain-plain"></div>
+                <span>平原</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color terrain-forest"></div>
+                <span>森林</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color terrain-mountain"></div>
+                <span>山地</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color terrain-water"></div>
+                <span>水域</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color terrain-fortress"></div>
+                <span>要塞</span>
+            </div>
+        </div>
+    </div>
+    
+    <div id="replay-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>战局回放</h2>
+            <div id="replay-controls">
+                <span id="replay-turn-info">帧: 0/0</span>
+                <button id="btn-replay-play">播放</button>
+                <button id="btn-replay-pause">暂停</button>
+                <button id="btn-replay-speed">速度: 1x</button>
+                <button id="btn-replay-close">关闭</button>
+            </div>
+            <canvas id="replay-canvas" width="800" height="600"></canvas>
+        </div>
+    </div>
+    
+    <div id="multiplayer-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>联机对战</h2>
+            <div id="multiplayer-panel">
+                <div id="connection-status">状态: 未连接</div>
+                <div id="player-name-input">
+                    <label>玩家名称:</label>
+                    <input type="text" id="player-name" value="玩家1">
+                </div>
+                <div id="room-controls">
+                    <button id="btn-create-room">创建房间</button>
+                    <button id="btn-join-room">加入房间</button>
+                    <input type="text" id="room-code" placeholder="房间号">
+                </div>
+                <div id="connected-players">
+                    <h3>在线玩家</h3>
+                    <ul id="player-list"></ul>
+                </div>
+                <button id="btn-close-multiplayer">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-over-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2 id="game-over-winner">游戏结束</h2>
+            <div id="game-over-info">
+                <p id="game-over-turns">回合数: 0</p>
+                <p id="game-over-duration">时长: 0秒</p>
+            </div>
+            <div id="game-over-stats">
+                <div class="player-stats">
+                    <h3>红方数据</h3>
+                    <div id="game-over-player1-stats"></div>
+                </div>
+                <div class="player-stats">
+                    <h3>蓝方数据</h3>
+                    <div id="game-over-player2-stats"></div>
+                </div>
+            </div>
+            <button id="btn-close-game-over" onclick="document.getElementById('game-over-modal').classList.add('hidden')">关闭</button>
+        </div>
+    </div>
+
+    <div id="stats-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>数据统计</h2>
+            <div id="stats-panel">
+                <div class="stats-section">
+                    <h3>全局统计</h3>
+                    <div id="global-stats"></div>
+                </div>
+                <div class="stats-section">
+                    <h3>最近排行</h3>
+                    <div id="rankings-list"></div>
+                </div>
+                <div class="stats-section">
+                    <h3>棋子统计</h3>
+                    <div id="unit-stats-list"></div>
+                </div>
+            </div>
+            <button id="btn-close-stats">关闭</button>
+        </div>
+    </div>
+
+    <script src="js/chessPieces.js"></script>
+    <script src="js/mapGenerator.js"></script>
+    <script src="js/skillResolver.js"></script>
+    <script src="js/turnManager.js"></script>
+    <script src="js/gamePredictor.js"></script>
+    <script src="js/statisticsManager.js"></script>
+    <script src="js/aiController.js"></script>
+    <script src="js/gameStorage.js"></script>
+    <script src="js/networkManager.js"></script>
+    <script src="js/replayManager.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
