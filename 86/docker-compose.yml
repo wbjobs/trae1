@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: drone-mosquitto
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    restart: unless-stopped
+    command: mosquitto -c /mosquitto/config/mosquitto.conf
+
+  backend:
+    build: ./backend
+    container_name: drone-backend
+    ports:
+      - "3001:3001"
+    environment:
+      - MQTT_BROKER_URL=mqtt://mosquitto:1883
+      - PORT=3001
+    volumes:
+      - ./backend:/app
+      - ./backend/logs:/app/logs
+    depends_on:
+      - mosquitto
+    restart: unless-stopped
+    command: npm run dev
+
+  simulator:
+    build: ./backend
+    container_name: drone-simulator
+    environment:
+      - MQTT_BROKER_URL=mqtt://mosquitto:1883
+      - SIMULATOR_UPDATE_INTERVAL=100
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - mosquitto
+    restart: unless-stopped
+    command: npm run simulator
+
+  frontend:
+    build: ./frontend
+    container_name: drone-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    restart: unless-stopped
+    command: npm start
