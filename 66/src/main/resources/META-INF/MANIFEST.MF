@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+Premain-Class: com.dbagent.AgentPremain
+Agent-Main-Class: com.dbagent.AgentPremain
+Can-Retransform-Classes: true
+Can-Redefine-Classes: true
+Boot-Class-Path: db-tracing-agent-1.0.0.jar
+Can-Set-Native-Method-Prefix: false

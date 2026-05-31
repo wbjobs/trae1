@@ -1,0 +1,87 @@
+{
+  "version": "1.0",
+  "description": "Default masking rules for DB Tracing Agent",
+  "rules": [
+    {
+      "name": "password-masking",
+      "description": "Mask password fields in SQL",
+      "fieldPattern": "password|passwd|pwd|pass",
+      "enabled": true
+    },
+    {
+      "name": "phone-masking",
+      "description": "Mask phone/mobile number fields",
+      "fieldPattern": "phone|mobile|cell|tel|telephone",
+      "enabled": true
+    },
+    {
+      "name": "id-card-masking",
+      "description": "Mask ID card/identity card number fields",
+      "fieldPattern": "id_card|idcard|identity_card|身份证|证件号|证件号码",
+      "enabled": true
+    },
+    {
+      "name": "email-masking",
+      "description": "Mask email fields",
+      "fieldPattern": "email|e_mail|mail",
+      "enabled": true
+    },
+    {
+      "name": "bank-card-masking",
+      "description": "Mask bank card/credit card number fields",
+      "fieldPattern": "bank_card|bankcard|card_no|card_number|银行卡|卡号",
+      "enabled": true
+    },
+    {
+      "name": "token-masking",
+      "description": "Mask token/secret/api key fields",
+      "fieldPattern": "token|secret|api_key|apikey|access_key|secret_key",
+      "enabled": true
+    },
+    {
+      "name": "ssn-masking",
+      "description": "Mask SSN/social security number fields",
+      "fieldPattern": "ssn|social_security|social_no",
+      "enabled": true
+    },
+    {
+      "name": "address-masking",
+      "description": "Mask address fields",
+      "fieldPattern": "address|addr|住址|地址",
+      "enabled": true
+    },
+    {
+      "name": "real-name-masking",
+      "description": "Mask real name fields",
+      "fieldPattern": "real_name|full_name|true_name|真实姓名|姓名",
+      "enabled": true
+    },
+    {
+      "name": "bank-account-masking",
+      "description": "Mask bank account fields",
+      "fieldPattern": "bank_account|account_no|account_number|账号|账户",
+      "enabled": true
+    },
+    {
+      "name": "id-card-value-masking",
+      "description": "Mask values matching ID card pattern (18 digits with last X/x)",
+      "sqlPattern": "((?i)VALUES|=|IN)\\s*\\(?\\s*['\"]?(\\d{17}[\\dXx]['\"]?)",
+      "replaceGroup": 2,
+      "enabled": true
+    },
+    {
+      "name": "phone-value-masking",
+      "description": "Mask values matching Chinese mobile phone pattern (11 digits starting with 1)",
+      "sqlPattern": "((?i)VALUES|=|IN)\\s*\\(?\\s*['\"]?(1[3-9]\\d{9})['\"]?",
+      "replaceGroup": 2,
+      "enabled": true
+    },
+    {
+      "name": "email-value-masking",
+      "description": "Mask email address values",
+      "sqlPattern": "((?i)VALUES|=|IN)\\s*\\(?\\s*['\"]?([\\w.+-]+@[\\w-]+\\.[\\w.]+)['\"]?",
+      "replaceGroup": 2,
+      "enabled": true
+    }
+  ]
+}
