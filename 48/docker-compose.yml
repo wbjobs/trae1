@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: hls-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  db:
+    image: postgres:15-alpine
+    container_name: hls-db
+    environment:
+      POSTGRES_DB: hls_video
+      POSTGRES_USER: hls
+      POSTGRES_PASSWORD: hls_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hls-backend
+    environment:
+      - DJANGO_SECRET_KEY=change-this-to-a-random-secret-key-in-production
+      - DJANGO_DEBUG=False
+      - DJANGO_ALLOWED_HOSTS=*
+      - DATABASE_URL=postgres://hls:hls_password@db:5432/hls_video
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./backend/media:/app/media
+      - ./backend/staticfiles:/app/staticfiles
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+      - db
+    restart: unless-stopped
+
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hls-celery-worker
+    command: celery -A config worker -l info --concurrency=2
+    environment:
+      - DJANGO_SECRET_KEY=change-this-to-a-random-secret-key-in-production
+      - DJANGO_DEBUG=False
+      - DATABASE_URL=postgres://hls:hls_password@db:5432/hls_video
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./backend/media:/app/media
+    depends_on:
+      - redis
+      - db
+      - backend
+    restart: unless-stopped
+
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hls-celery-beat
+    command: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    environment:
+      - DJANGO_SECRET_KEY=change-this-to-a-random-secret-key-in-production
+      - DJANGO_DEBUG=False
+      - DATABASE_URL=postgres://hls:hls_password@db:5432/hls_video
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./backend/media:/app/media
+    depends_on:
+      - redis
+      - db
+      - backend
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: hls-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./backend/media:/app/media:ro
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  postgres_data:
