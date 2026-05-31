@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>语音命令词识别系统</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <div id="app">
+        <header class="app-header">
+            <div class="header-left">
+                <div class="logo">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                        <line x1="12" y1="19" x2="12" y2="23"/>
+                        <line x1="8" y1="23" x2="16" y2="23"/>
+                    </svg>
+                </div>
+                <h1>语音命令词识别系统</h1>
+            </div>
+            <div class="header-right">
+                <div class="status-indicators">
+                    <div class="status-item" id="status-recording">
+                        <span class="status-dot" data-status="recording"></span>
+                        <span class="status-label">录音</span>
+                    </div>
+                    <div class="status-item" id="status-awake">
+                        <span class="status-dot" data-status="awake"></span>
+                        <span class="status-label">唤醒</span>
+                    </div>
+                    <div class="status-item" id="status-connected">
+                        <span class="status-dot" data-status="connected"></span>
+                        <span class="status-label">服务</span>
+                    </div>
+                    <div class="status-item" id="status-denoise">
+                        <span class="status-dot" data-status="denoise"></span>
+                        <span class="status-label">降噪</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="app-main">
+            <section class="panel panel-recognition">
+                <div class="panel-header">
+                    <h2>实时识别</h2>
+                    <div class="panel-controls">
+                        <button id="btn-start" class="btn btn-primary">开始录音</button>
+                        <button id="btn-stop" class="btn btn-secondary" disabled>停止录音</button>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div class="recognition-display">
+                        <div class="current-command">
+                            <div class="command-label" id="current-label">--</div>
+                            <div class="command-confidence-wrapper">
+                                <div class="confidence-bar">
+                                    <div class="confidence-fill" id="confidence-fill"></div>
+                                </div>
+                                <span class="confidence-value" id="confidence-value">0%</span>
+                            </div>
+                            <div class="inference-time" id="inference-time">推理时间: -- ms</div>
+                        </div>
+                        <div class="hotword-display">
+                            <div class="hotword-label">唤醒词状态</div>
+                            <div class="hotword-value" id="hotword-value">待机</div>
+                            <div class="hotword-hint">说"你好小智"唤醒系统</div>
+                        </div>
+                    </div>
+                    <div class="confidence-chart">
+                        <div class="chart-title">各命令词置信度</div>
+                        <div class="chart-bars" id="confidence-bars"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel panel-history">
+                <div class="panel-header">
+                    <h2>识别历史</h2>
+                    <div class="panel-controls">
+                        <button id="btn-clear-history" class="btn btn-ghost">清空</button>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div class="history-list" id="history-list">
+                        <div class="history-empty">暂无识别记录</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel panel-custom-commands">
+                <div class="panel-header">
+                    <h2>自定义命令词</h2>
+                    <div class="panel-controls">
+                        <button id="btn-add-command" class="btn btn-primary btn-small">+ 新增命令</button>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div class="custom-commands-list" id="custom-commands-list">
+                        <div class="custom-commands-empty">暂无自定义命令词</div>
+                    </div>
+
+                    <div class="enrollment-modal" id="enrollment-modal" style="display: none;">
+                        <div class="enrollment-content">
+                            <div class="enrollment-header">
+                                <h3 id="enrollment-title">录制自定义命令词</h3>
+                                <button id="btn-close-enrollment" class="btn-close">&times;</button>
+                            </div>
+
+                            <div class="enrollment-step" id="enrollment-step-info">
+                                <div class="enrollment-progress">
+                                    <div class="enrollment-progress-bar">
+                                        <div class="enrollment-progress-fill" id="enrollment-progress-fill"></div>
+                                    </div>
+                                    <span class="enrollment-step-text" id="enrollment-step-text">第 0 / 3 次录制</span>
+                                </div>
+                                <div class="enrollment-message" id="enrollment-message">准备开始</div>
+                                <div class="enrollment-hint" id="enrollment-hint">请按提示录制命令词</div>
+                            </div>
+
+                            <div class="enrollment-form" id="enrollment-form">
+                                <div class="setting-item">
+                                    <label>命令词名称</label>
+                                    <div class="setting-row">
+                                        <input type="text" id="enrollment-name" placeholder="如：打开卧室灯" />
+                                    </div>
+                                </div>
+                                <div class="setting-item">
+                                    <label>映射动作</label>
+                                    <div class="setting-row">
+                                        <input type="text" id="enrollment-action" placeholder="如：turn_on_bedroom_light" />
+                                    </div>
+                                </div>
+                                <div class="setting-item">
+                                    <label>描述（可选）</label>
+                                    <div class="setting-row">
+                                        <input type="text" id="enrollment-description" placeholder="简短描述" />
+                                    </div>
+                                </div>
+                                <button id="btn-start-enrollment" class="btn btn-primary btn-full">开始录制</button>
+                            </div>
+
+                            <div class="enrollment-record" id="enrollment-record" style="display: none;">
+                                <div class="enrollment-visualizer">
+                                    <div class="recording-indicator">
+                                        <span class="recording-dot"></span>
+                                        <span id="recording-status">准备录制...</span>
+                                    </div>
+                                </div>
+                                <div class="enrollment-buttons">
+                                    <button id="btn-start-capture" class="btn btn-primary">开始录制</button>
+                                    <button id="btn-stop-capture" class="btn btn-secondary" disabled>停止录制</button>
+                                    <button id="btn-cancel-enrollment" class="btn btn-ghost">取消</button>
+                                </div>
+                            </div>
+
+                            <div class="enrollment-complete" id="enrollment-complete" style="display: none;">
+                                <div class="success-icon">✓</div>
+                                <h4>注册成功！</h4>
+                                <div class="enrollment-summary" id="enrollment-summary"></div>
+                                <button id="btn-finish-enrollment" class="btn btn-primary btn-full">完成</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel panel-settings">
+                <div class="panel-header">
+                    <h2>设置</h2>
+                </div>
+                <div class="panel-body">
+                    <div class="settings-section">
+                        <div class="section-title">模型配置</div>
+                        <div class="settings-grid">
+                            <div class="setting-item">
+                                <label>模型路径</label>
+                                <div class="setting-row">
+                                    <input type="text" id="model-path" value="models/command_model.onnx" />
+                                    <button id="btn-load-model" class="btn btn-small">加载</button>
+                                </div>
+                            </div>
+                            <div class="setting-item">
+                                <label>置信度阈值</label>
+                                <div class="setting-row">
+                                    <input type="range" id="confidence-threshold" min="0.3" max="0.99" step="0.01" value="0.7" />
+                                    <span id="confidence-threshold-value">0.70</span>
+                                </div>
+                            </div>
+                            <div class="setting-item">
+                                <label>热词阈值</label>
+                                <div class="setting-row">
+                                    <input type="range" id="hotword-threshold" min="0.3" max="0.99" step="0.01" value="0.7" />
+                                    <span id="hotword-threshold-value">0.70</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="section-title">降噪与VAD</div>
+                        <div class="settings-grid">
+                            <div class="setting-item">
+                                <label>自适应降噪</label>
+                                <div class="setting-row">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="enable-denoise" checked />
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                    <span id="denoise-status">已启用</span>
+                                </div>
+                            </div>
+                            <div class="setting-item">
+                                <label>环境噪声学习</label>
+                                <div class="setting-row">
+                                    <button id="btn-start-noise-learning" class="btn btn-small">开始学习</button>
+                                    <button id="btn-stop-noise-learning" class="btn btn-small btn-ghost" disabled>停止</button>
+                                </div>
+                            </div>
+                            <div class="setting-item">
+                                <label>噪声配置文件</label>
+                                <div class="setting-row">
+                                    <input type="text" id="noise-profile-path" placeholder="noise_profile.json" />
+                                    <button id="btn-save-noise-profile" class="btn btn-small">保存</button>
+                                </div>
+                            </div>
+                            <div class="setting-item">
+                                <label>当前SNR估计</label>
+                                <div class="setting-row">
+                                    <span id="snr-estimate" class="snr-value">-- dB</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="section-title">多帧投票</div>
+                        <div class="settings-grid">
+                            <div class="setting-item">
+                                <label>多帧投票</label>
+                                <div class="setting-row">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="enable-voting" checked />
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="setting-item">
+                                <label>最少帧数</label>
+                                <div class="setting-row">
+                                    <input type="number" id="voting-min-frames" min="2" max="8" value="3" />
+                                    <span>帧</span>
+                                </div>
+                            </div>
+                            <div class="setting-item">
+                                <label>一致性阈值</label>
+                                <div class="setting-row">
+                                    <input type="range" id="voting-consensus" min="0.4" max="1.0" step="0.05" value="0.6" />
+                                    <span id="voting-consensus-value">0.60</span>
+                                </div>
+                            </div>
+                            <div class="setting-item">
+                                <label>平均置信度</label>
+                                <div class="setting-row">
+                                    <input type="range" id="voting-avg-confidence" min="0.5" max="0.95" step="0.05" value="0.7" />
+                                    <span id="voting-avg-confidence-value">0.70</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="section-title">网络连接</div>
+                        <div class="settings-grid">
+                            <div class="setting-item">
+                                <label>智能家居服务</label>
+                                <div class="setting-row">
+                                    <input type="text" id="ws-url" value="ws://localhost:8765" />
+                                    <button id="btn-connect-ws" class="btn btn-small">连接</button>
+                                    <button id="btn-disconnect-ws" class="btn btn-small btn-ghost">断开</button>
+                                </div>
+                            </div>
+                            <div class="setting-item">
+                                <label>模拟测试</label>
+                                <div class="setting-row">
+                                    <select id="simulate-label">
+                                        <option value="开机">开机</option>
+                                        <option value="关机">关机</option>
+                                        <option value="调高音量">调高音量</option>
+                                        <option value="调低音量">调低音量</option>
+                                        <option value="下一首">下一首</option>
+                                        <option value="上一首">上一首</option>
+                                        <option value="暂停">暂停</option>
+                                        <option value="播放">播放</option>
+                                        <option value="静音">静音</option>
+                                        <option value="取消静音">取消静音</option>
+                                    </select>
+                                    <button id="btn-simulate" class="btn btn-small">发送</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="app-footer">
+            <div class="footer-info">
+                <span>采样率: 16kHz | 单声道 | 帧长: 1000ms | 降噪: 维纳滤波</span>
+            </div>
+            <div class="footer-model">
+                <span id="model-status">模型: 未加载</span>
+            </div>
+        </footer>
+    </div>
+
+    <script src="tauri.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>

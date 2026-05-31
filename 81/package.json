@@ -1,0 +1,17 @@
+{
+  "name": "voice-command-recognition",
+  "private": true,
+  "version": "1.0.0",
+  "description": "端侧语音命令词识别桌面应用",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.0.0"
+  }
+}
