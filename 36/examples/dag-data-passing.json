@@ -1,0 +1,62 @@
+{
+  "id": "data_passing_demo",
+  "name": "Data Passing Demo - User Profile Pipeline",
+  "tasks": {
+    "fetch_user": {
+      "id": "fetch_user",
+      "name": "Fetch User Data from API",
+      "type": "HTTP",
+      "timeoutMs": 30000,
+      "maxRetries": 3,
+      "params": {
+        "url": "https://api.example.com/users/12345",
+        "method": "GET"
+      }
+    },
+    "process_user": {
+      "id": "process_user",
+      "name": "Process User Data with Shell",
+      "type": "SHELL",
+      "timeoutMs": 60000,
+      "maxRetries": 2,
+      "params": {
+        "command": "echo '{\"userId\": \"{{fetch_user.id}}\", \"username\": \"{{fetch_user.username}}\", \"email\": \"{{fetch_user.email}}\", \"processed\": true}'"
+      }
+    },
+    "save_user": {
+      "id": "save_user",
+      "name": "Save Processed User to DB",
+      "type": "SQL",
+      "timeoutMs": 30000,
+      "maxRetries": 2,
+      "params": {
+        "jdbcUrl": "jdbc:mysql://localhost:3306/app_db",
+        "username": "app_user",
+        "password": "secret",
+        "driver": "com.mysql.cj.jdbc.Driver",
+        "sql": "INSERT INTO processed_users (user_id, username, email, processed_at) VALUES ('{{process_user.userId}}', '{{process_user.username}}', '{{process_user.email}}', NOW())"
+      }
+    },
+    "notify": {
+      "id": "notify",
+      "name": "Send Notification",
+      "type": "HTTP",
+      "timeoutMs": 15000,
+      "maxRetries": 2,
+      "params": {
+        "url": "https://hooks.example.com/notify",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"channel\": \"user-{{fetch_user.id}}\", \"message\": \"User {{fetch_user.username}} processed and saved to database\"}"
+      }
+    }
+  },
+  "dependencies": {
+    "fetch_user": [],
+    "process_user": ["fetch_user"],
+    "save_user": ["process_user"],
+    "notify": ["save_user"]
+  }
+}

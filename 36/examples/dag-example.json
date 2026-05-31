@@ -1,0 +1,82 @@
+{
+  "id": "example_dag_001",
+  "name": "Example DAG - Data Pipeline",
+  "tasks": {
+    "task_extract": {
+      "id": "task_extract",
+      "name": "Extract Data from API",
+      "type": "HTTP",
+      "timeoutMs": 60000,
+      "maxRetries": 3,
+      "params": {
+        "url": "https://api.example.com/data/extract",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer your-token-here"
+        },
+        "body": "{\"source\": \"daily\", \"date\": \"2024-01-01\"}"
+      }
+    },
+    "task_transform": {
+      "id": "task_transform",
+      "name": "Transform Data with Shell Script",
+      "type": "SHELL",
+      "timeoutMs": 120000,
+      "maxRetries": 3,
+      "params": {
+        "command": "echo 'Transforming data...' && python3 /opt/scripts/transform.py --input /data/raw.json --output /data/transformed.json"
+      }
+    },
+    "task_load": {
+      "id": "task_load",
+      "name": "Load Data into Database",
+      "type": "SQL",
+      "timeoutMs": 180000,
+      "maxRetries": 3,
+      "params": {
+        "jdbcUrl": "jdbc:mysql://localhost:3306/analytics",
+        "username": "etl_user",
+        "password": "secure_password",
+        "driver": "com.mysql.cj.jdbc.Driver",
+        "sql": "LOAD DATA INFILE '/data/transformed.json' INTO TABLE daily_metrics FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n';"
+      }
+    },
+    "task_validate": {
+      "id": "task_validate",
+      "name": "Validate Loaded Data",
+      "type": "SQL",
+      "timeoutMs": 60000,
+      "maxRetries": 2,
+      "params": {
+        "jdbcUrl": "jdbc:mysql://localhost:3306/analytics",
+        "username": "etl_user",
+        "password": "secure_password",
+        "driver": "com.mysql.cj.jdbc.Driver",
+        "sql": "SELECT COUNT(*) as total, SUM(CASE WHEN value IS NULL THEN 1 ELSE 0 END) as null_count FROM daily_metrics WHERE date = CURDATE()"
+      }
+    },
+    "task_notify": {
+      "id": "task_notify",
+      "name": "Send Completion Notification",
+      "type": "HTTP",
+      "timeoutMs": 30000,
+      "maxRetries": 2,
+      "params": {
+        "url": "https://hooks.example.com/notify",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"channel\": \"data-pipeline\", \"message\": \"Daily ETL completed successfully\"}"
+      }
+    }
+  },
+  "dependencies": {
+    "task_extract": [],
+    "task_transform": ["task_extract"],
+    "task_load": ["task_transform"],
+    "task_validate": ["task_load"],
+    "task_notify": ["task_validate"]
+  }
+}
