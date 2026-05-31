@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>WebGPU Whitted Ray Tracer</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #111;
+      color: #eee;
+      font-family: system-ui, sans-serif;
+      overflow: hidden;
+    }
+    #app {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    canvas {
+      display: block;
+      background: #000;
+      cursor: grab;
+      image-rendering: pixelated;
+    }
+    canvas:active {
+      cursor: grabbing;
+    }
+    #hud {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      padding: 10px 14px;
+      background: rgba(0, 0, 0, 0.55);
+      border: 1px solid #333;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.6;
+      min-width: 240px;
+    }
+    #hud label { display: block; margin-top: 4px; }
+    #hud input[type="range"] { width: 100%; }
+    #hud .row { display: flex; justify-content: space-between; }
+    #hud button {
+      margin-top: 6px;
+      padding: 4px 10px;
+      font-size: 12px;
+      background: #333;
+      color: #eee;
+      border: 1px solid #555;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #hud button.active {
+      background: #4a7;
+      border-color: #6b9;
+    }
+    #hud .file-input {
+      margin-top: 6px;
+      font-size: 11px;
+    }
+    #hud .file-input input {
+      font-size: 11px;
+      max-width: 100%;
+    }
+    #hint {
+      position: fixed;
+      bottom: 12px;
+      left: 12px;
+      padding: 6px 10px;
+      background: rgba(0, 0, 0, 0.55);
+      border: 1px solid #333;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #bbb;
+    }
+    #error {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.85);
+      color: #f66;
+      font-size: 16px;
+      padding: 24px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <canvas id="canvas" width="800" height="600"></canvas>
+  </div>
+  <div id="hud">
+    <div class="row"><span>FPS</span><span id="fps">—</span></div>
+    <div class="row"><span>SPP</span><span id="sppVal">32</span></div>
+    <div class="row"><span>Samples</span><span id="smp">0</span></div>
+    <div class="row"><span>Tris</span><span id="triVal">0</span></div>
+    <div class="row"><span>BVH</span><span id="bvhVal">—</span></div>
+    <label>SPP <input id="spp" type="range" min="1" max="128" step="1" value="32" /></label>
+    <label><input id="reset" type="button" value="Reset camera" /></label>
+    <button id="bvhToggle">BVH: OFF</button>
+    <label class="file-input">OBJ file
+      <input id="objFile" type="file" accept=".obj" />
+    </label>
+  </div>
+  <div id="hint">drag: rotate &nbsp;|&nbsp; wheel: zoom</div>
+  <div id="error"></div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
