@@ -1,0 +1,57 @@
+# Scoring rules for container escape detection behavior correlation.
+#
+# threshold        Cumulative risk score (individual + correlation bonuses)
+#                  that triggers a HIGH severity alert.
+# time_window      Seconds of history retained per container for scoring.
+# decay_half_life  Optional: exponential decay half-life in seconds.
+#                  Older events lose weight.  Omit to disable decay.
+#
+# event_scores     Base score per event type (1-10 recommended).
+#                  Each event may have sub-categories keyed by the
+#                  "reason tag" produced by classify_event().
+#                  "default" is used when no specific tag matches.
+#
+# correlations     Ordered sequences of event types that, when observed
+#                  within `window` seconds of each other, add a bonus
+#                  on top of the individual scores.
+
+threshold: 20
+time_window: 300
+# decay_half_life: 120
+
+event_scores:
+  MOUNT:
+    default: 5
+    procfs: 8
+    sysfs: 7
+    cgroupfs: 7
+    devpts: 6
+    bind_mount: 6
+    shared_propagation: 8
+  UNSHARE:
+    default: 4
+    NEWUSER: 8
+    NEWPID: 7
+    NEWNS: 6
+  SETNS:
+    default: 6
+  OPEN_BY_HANDLE_AT:
+    default: 9
+  NAME_TO_HANDLE_AT:
+    default: 7
+
+correlations:
+  - name: "namespace_then_mount"
+    sequence: ["UNSHARE", "MOUNT"]
+    window: 60
+    bonus: 10
+
+  - name: "file_handle_chain"
+    sequence: ["NAME_TO_HANDLE_AT", "OPEN_BY_HANDLE_AT"]
+    window: 30
+    bonus: 12
+
+  - name: "full_escape_chain"
+    sequence: ["UNSHARE", "MOUNT", "OPEN_BY_HANDLE_AT"]
+    window: 120
+    bonus: 15

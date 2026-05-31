@@ -1,0 +1,27 @@
+# Whitelist configuration for container-escape-detector
+#
+# Fields:
+#   container_ids    : list of full container IDs (64-char hex) to fully
+#                      exclude from alerting.
+#   event_types      : list of event type names to globally ignore, e.g.
+#                      - "UNSHARE"
+#   command_patterns : list of Python regular expressions matched against
+#                      the process command line. Matching commands are
+#                      ignored.
+#
+# Example (useful defaults that tend to produce noise in normal clusters):
+#
+# container_ids:
+#   - "0000000000000000000000000000000000000000000000000000000000000000"
+#
+# event_types: []
+#
+# command_patterns:
+#   - "/usr/bin/systemd-resolved"
+#   - "kube-proxy --cluster-cidr"
+
+container_ids: []
+
+event_types: []
+
+command_patterns: []
