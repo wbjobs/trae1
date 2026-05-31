@@ -1,0 +1,10 @@
+node_modules
+dist
+dist-ssr
+.DS_Store
+*.log
+
+# Tauri
+src-tauri/target
+src-tauri/Cargo.lock
+src-tauri/gen
