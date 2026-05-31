@@ -1,0 +1,202 @@
+{
+  "ociVersion": "1.0.2-dev",
+  "process": {
+    "user": {
+      "uid": 1000,
+      "gid": 1000
+    },
+    "args": [],
+    "env": [
+      "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "HOME=/tmp"
+    ],
+    "cwd": "/work",
+    "noNewPrivileges": true,
+    "rlimits": [
+      {
+        "type": "RLIMIT_NOFILE",
+        "hard": 1024,
+        "soft": 1024
+      },
+      {
+        "type": "RLIMIT_NPROC",
+        "hard": 100,
+        "soft": 100
+      }
+    ],
+    "oomScoreAdj": 1000
+  },
+  "root": {
+    "path": "rootfs",
+    "readonly": true
+  },
+  "mounts": [
+    {
+      "destination": "/proc",
+      "type": "proc",
+      "source": "proc",
+      "options": ["nosuid", "noexec", "nodev"]
+    },
+    {
+      "destination": "/dev",
+      "type": "tmpfs",
+      "source": "tmpfs",
+      "options": ["nosuid", "noexec", "nodev", "mode=755"]
+    },
+    {
+      "destination": "/dev/pts",
+      "type": "devpts",
+      "source": "devpts",
+      "options": ["nosuid", "noexec", "newinstance", "ptmxmode=0666", "mode=0620"]
+    },
+    {
+      "destination": "/dev/shm",
+      "type": "tmpfs",
+      "source": "shm",
+      "options": ["nosuid", "noexec", "nodev", "mode=1777", "size=67108864"]
+    },
+    {
+      "destination": "/sys",
+      "type": "sysfs",
+      "source": "sysfs",
+      "options": ["nosuid", "noexec", "nodev", "ro"]
+    },
+    {
+      "destination": "/input",
+      "type": "bind",
+      "source": "input",
+      "options": ["ro", "nosuid", "noexec", "nodev", "bind"]
+    },
+    {
+      "destination": "/output",
+      "type": "bind",
+      "source": "output",
+      "options": ["rw", "nosuid", "noexec", "nodev", "bind"]
+    },
+    {
+      "destination": "/work",
+      "type": "tmpfs",
+      "source": "tmpfs",
+      "options": ["nosuid", "noexec", "nodev", "mode=1777", "size=134217728"]
+    }
+  ],
+  "linux": {
+    "resources": {
+      "devices": [
+        {
+          "allow": false,
+          "access": "rwm"
+        },
+        {
+          "allow": true,
+          "type": "c",
+          "major": 1,
+          "minor": 3,
+          "access": "r"
+        },
+        {
+          "allow": true,
+          "type": "c",
+          "major": 1,
+          "minor": 8,
+          "access": "r"
+        },
+        {
+          "allow": true,
+          "type": "c",
+          "major": 1,
+          "minor": 9,
+          "access": "r"
+        },
+        {
+          "allow": true,
+          "type": "c",
+          "major": 5,
+          "minor": 0,
+          "access": "r"
+        },
+        {
+          "allow": true,
+          "type": "c",
+          "major": 5,
+          "minor": 2,
+          "access": "r"
+        },
+        {
+          "allow": true,
+          "type": "c",
+          "major": 136,
+          "access": "rwm"
+        },
+        {
+          "allow": true,
+          "type": "c",
+          "major": 5,
+          "minor": 1,
+          "access": "rwm"
+        }
+      ],
+      "cpu": {
+        "shares": 1024,
+        "quota": 100000,
+        "period": 100000
+      },
+      "memory": {
+        "limit": 536870912,
+        "reservation": 268435456,
+        "swap": 0,
+        "kernel": 67108864
+      },
+      "blockIO": {
+        "throttleReadBpsDevice": [
+          {
+            "major": 8,
+            "minor": 0,
+            "rate": 10485760
+          }
+        ],
+        "throttleWriteBpsDevice": [
+          {
+            "major": 8,
+            "minor": 0,
+            "rate": 10485760
+          }
+        ]
+      }
+    },
+    "cgroupsPath": "/sandbox/execution",
+    "namespaces": [
+      {
+        "type": "pid"
+      },
+      {
+        "type": "ipc"
+      },
+      {
+        "type": "uts"
+      },
+      {
+        "type": "mount"
+      }
+    ],
+    "maskedPaths": [
+      "/proc/asound",
+      "/proc/acpi",
+      "/proc/kcore",
+      "/proc/keys",
+      "/proc/latency_stats",
+      "/proc/timer_list",
+      "/proc/timer_stats",
+      "/proc/sched_debug",
+      "/proc/scsi",
+      "/sys/firmware"
+    ],
+    "readonlyPaths": [
+      "/proc/bus",
+      "/proc/fs",
+      "/proc/irq",
+      "/proc/sys",
+      "/proc/sysrq-trigger"
+    ]
+  }
+}

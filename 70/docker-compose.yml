@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  sandbox-executor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sandbox-executor
+    ports:
+      - "8080:8080"
+    privileged: true
+    volumes:
+      - /var/run/runtime:/var/run/runtime
+      - sandbox-data:/sandbox
+      - /var/log/sandbox:/var/log/sandbox
+    environment:
+      - SERVER_PORT=8080
+      - RUNSC_BIN_PATH=/usr/local/bin/runsc
+      - SANDBOX_ROOT_DIR=/sandbox
+      - SANDBOX_INPUT_DIR=/sandbox/input
+      - SANDBOX_OUTPUT_DIR=/sandbox/output
+      - SANDBOX_WORK_DIR=/sandbox/work
+      - RESOURCE_CPU_LIMIT=1.0
+      - RESOURCE_MEMORY_LIMIT=536870912
+      - RESOURCE_PID_LIMIT=100
+      - RESOURCE_OOM_SCORE_ADJ=1000
+      - RESOURCE_IO_READ_LIMIT=10485760
+      - RESOURCE_IO_WRITE_LIMIT=10485760
+      - RESOURCE_NETWORK_MODE=none
+      - SANDBOX_MAX_CONCURRENT=10
+      - SANDBOX_DEFAULT_TIMEOUT=30s
+      - AI_SECURITY_ENABLED=true
+      - AI_SECURITY_OLLAMA_URL=http://host.docker.internal:11434
+      - AI_SECURITY_MODEL=qwen2.5-coder:7b-instruct
+      - AI_SECURITY_REQUEST_TIMEOUT=30s
+      - AI_SECURITY_CACHE_TTL=1h
+      - AI_SECURITY_REJECT_THRESHOLD=60
+      - AI_SECURITY_APPROVE_THRESHOLD=90
+      - AI_SECURITY_APPROVAL_WEBHOOK_URL=
+      - AI_SECURITY_APPROVAL_TIMEOUT=5m
+      - LOG_LEVEL=info
+      - LOG_OUTPUT_PATH=/var/log/sandbox
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    mem_limit: 2g
+    cpus: "2.0"
+    networks:
+      - sandbox-network
+
+networks:
+  sandbox-network:
+    driver: bridge
+
+volumes:
+  sandbox-data:
+    driver: local
