@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package com.quant.gateway.proto;
+
+option java_package = "com.quant.gateway.proto";
+option java_outer_classname = "MarketProtos";
+option java_multiple_files = false;
+
+// 行情类型
+enum MsgType {
+    TICK           = 0; // 逐笔成交
+    ORDER          = 1; // 逐笔委托
+    SNAPSHOT       = 2; // 五档快照
+    HEARTBEAT      = 3; // 心跳
+    SUBSCRIBE_REQ  = 4; // 订阅请求 (客户端->网关)
+    SUBSCRIBE_RESP = 5; // 订阅响应 (网关->客户端)
+    HELLO          = 6; // 连接握手 (客户端带 clientId)
+    REPLAY_START   = 7; // 断线补发开始
+    REPLAY_END     = 8; // 断线补发结束
+    DEGRADE_NOTICE = 9; // 降级通知
+}
+
+// 订阅类型
+enum SubType {
+    BY_SYMBOL  = 0; // 按股票代码
+    BY_SECTOR  = 1; // 按板块
+    BY_KIND    = 2; // 按类型 (逐笔成交/逐笔委托/快照)
+}
+
+// 数据类型
+enum DataKind {
+    KIND_TICK    = 0; // 逐笔成交
+    KIND_ORDER   = 0; // 逐笔委托 (same value for flags)
+    KIND_ALL     = 2; // 全部
+}
+
+// 行情 tick 数据 (同时承载逐笔成交/逐笔委托)
+message TickData {
+    string  symbol      = 1; // 股票代码 (如 600519.SH)
+    string  sector      = 2; // 所属板块
+    int64   timestamp   = 3; // 时间戳 (毫秒)
+    int64   seq         = 4; // 行情流水号
+    MsgType msgType     = 5; // TICK 或 ORDER
+    double  price       = 6; // 价格
+    int64   volume      = 7; // 成交量/委托量
+    int64   turnover    = 8; // 成交额
+    string  tradeFlag   = 9; // 成交方向 B/S (逐笔成交)
+    string  orderSide   = 10; // BID/ASK (逐笔委托)
+}
+
+// 订阅请求 (客户端 -> 网关)
+message SubscribeRequest {
+    string     clientId  = 1;
+    SubType    subType   = 2;
+    repeated string symbols = 3; // 当 subType=BY_SYMBOL 时使用
+    repeated string sectors = 4; // 当 subType=BY_SECTOR 时使用
+    repeated MsgType kinds  = 5; // 当 subType=BY_KIND 时使用
+    bool         cancel    = 6; // true 表示取消订阅
+}
+
+// 订阅响应 (网关 -> 客户端)
+message SubscribeResponse {
+    string clientId = 1;
+    int32  code     = 2; // 0 成功
+    string message  = 3;
+}
+
+// 统一消息封装
+message Message {
+    MsgType msgType = 1;
+    oneof body {
+        TickData          tick     = 2;
+        SubscribeRequest  subReq   = 3;
+        SubscribeResponse subResp  = 4;
+    }
+    int64 serverTime = 10;
+}
