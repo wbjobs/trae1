@@ -1,0 +1,49 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: clickstream-sessionization
+  kafka:
+    bootstrap-servers: localhost:9092
+    streams:
+      application-id: clickstream-sessionization
+
+kafka:
+  input:
+    topic: click-events
+  output:
+    topic: sessions
+    detail:
+      topic: session-details
+  anomaly:
+    topic: anomaly-sessions
+  blacklist:
+    topic: blacklist-entries
+  application:
+    id: clickstream-sessionization
+
+session:
+  timeout:
+    minutes: 30
+  grace:
+    minutes: 1
+
+anomaly:
+  concurrent:
+    threshold: 5
+    window:
+      minutes: 5
+  page:
+    duration:
+      threshold:
+        seconds: 1
+  path:
+    repeat:
+      threshold: 0.8
+
+logging:
+  level:
+    root: INFO
+    com.clickstream: DEBUG
+    org.apache.kafka.streams: INFO
