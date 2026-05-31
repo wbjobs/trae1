@@ -1,0 +1,56 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: oauth2-audit-system
+  
+  datasource:
+    url: jdbc:h2:mem:oauth2_audit_db
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  
+  elasticsearch:
+    uris: http://localhost:9200
+    socket-timeout: 30s
+    connect-timeout: 30s
+
+logging:
+  level:
+    com.oauth2.audit: DEBUG
+    org.springframework.security: DEBUG
+
+audit:
+  log:
+    retention-days: 180
+
+ml:
+  anomaly-detection:
+    enabled: true
+    threshold: 0.7
+    training-days: 90
+    update-cron: "0 0 2 ? * SUN"
+  notification:
+    sms:
+      enabled: false
+      provider: twilio
+      from-number: ""
+    email:
+      enabled: true
+      smtp-host: smtp.example.com
+      smtp-port: 587
+      from-address: noreply@example.com
