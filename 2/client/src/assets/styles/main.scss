@@ -1,0 +1,125 @@
+@import 'variables.scss';
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: $font-size-base;
+  color: $text-primary;
+  background-color: $bg-color;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  height: 100%;
+}
+
+a {
+  color: $primary-color;
+  text-decoration: none;
+  
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: $border-color;
+  border-radius: 3px;
+  
+  &:hover {
+    background: $text-secondary;
+  }
+}
+
+::selection {
+  background: rgba($primary-color, 0.2);
+}
+
+.el-message {
+  top: 20px !important;
+}
+
+.el-dialog {
+  border-radius: $border-radius-lg !important;
+  overflow: hidden;
+}
+
+.el-button {
+  border-radius: $border-radius-base;
+}
+
+.el-input__wrapper {
+  border-radius: $border-radius-base;
+}
+
+.el-card {
+  border-radius: $border-radius-lg;
+  border: none;
+  box-shadow: $shadow-base;
+}
+
+.el-tag {
+  border-radius: $border-radius-base;
+}
+
+.el-table {
+  border-radius: $border-radius-base;
+  overflow: hidden;
+}
+
+@media (max-width: $mobile-breakpoint) {
+  .el-dialog {
+    margin: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+  }
+  
+  .el-pagination {
+    .el-pagination__jump,
+    .el-pagination__sizes {
+      display: none;
+    }
+  }
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity $transition-base;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: all $transition-base;
+}
+
+.slide-up-enter-from {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.slide-up-leave-to {
+  opacity: 0;
+  transform: translateY(-20px);
+}
