@@ -1,0 +1,34 @@
+log_level: info
+listen_addr: ":8080"
+consul_address: "localhost:8500"
+instance_limit: 100
+default_memory_limit_mb: 64
+default_max_instructions: 10000000
+default_timeout_seconds: 10
+default_aot_cache_dir: "./aot-cache"
+default_opt_level: "O2"
+
+services:
+  - name: hello-service
+    module: "./bin/hello.wasm"
+    port: 8081
+    instances: 2
+    env_vars:
+      RUST_LOG: "info"
+    config_mounts:
+      - source: "./config/hello.json"
+        target: "/config/app.json"
+        permissions: "ro"
+    health_check_path: "/health"
+    memory_limit_mb: 64
+    max_instructions: 10000000
+    timeout_seconds: 10
+    module_version: "v1.0.0"
+    use_aot_cache: true
+    opt_level: "O2"
+    consul:
+      enabled: true
+      address: "localhost"
+      port: 8500
+      service: "hello-service"
+      check_interval: "10s"
