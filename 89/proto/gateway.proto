@@ -1,0 +1,224 @@
+// Arrow Columnar Data Transfer Gateway
+//
+// 所有数据消息使用 Arrow IPC Stream 格式的原始字节传输，
+// 从而实现 Python -> Arrow -> Go（以及反向）的零拷贝/免序列化传输。
+syntax = "proto3";
+
+package columnar.gateway;
+
+// ========== 元数据 ==========
+
+message DatasetInfo {
+  string name = 1;
+  int64 version = 2;
+  int64 created_at = 3; // unix seconds
+  int64 row_count = 4;
+  int64 bytes = 5;
+  string schema_json = 6; // Arrow schema JSON, 便于客户端检查
+}
+
+message VersionList {
+  repeated DatasetInfo versions = 1;
+}
+
+// ========== 上传 / 下载 ==========
+
+message UploadRequest {
+  string dataset_name = 1;
+  // 首条消息携带 schema_ipc（可选）；随后每一条携带 Arrow IPC record batch 字节。
+  bytes arrow_ipc = 2;
+}
+
+message ColumnOptimization {
+  string column_name = 1;
+  string original_type = 2;
+  string optimized_type = 3;
+  string encoding = 4;         // e.g. "dictionary", "none"
+  double memory_saving_ratio = 5; // 0.0 - 1.0, fraction saved
+  int64 original_bytes = 6;
+  int64 optimized_bytes = 7;
+}
+
+message SchemaOptimization {
+  repeated ColumnOptimization columns = 1;
+  string compression = 2;       // e.g. "lz4"
+  int64 total_original_bytes = 3;
+  int64 total_optimized_bytes = 4;
+  double total_saving_ratio = 5;
+}
+
+message UploadResponse {
+  DatasetInfo info = 1;
+  SchemaOptimization optimization = 2;  // 当服务端启用 --optimize-schema 时返回
+}
+
+message DownloadRequest {
+  string dataset_name = 1;
+  // 0 或未设置表示最新版本
+  int64 version = 2;
+}
+
+// 流式返回，每条消息为一个 Arrow IPC record batch 字节。
+message DownloadResponse {
+  bytes arrow_ipc = 1;
+}
+
+// ========== 查询（基于 DataFusion SQL） ==========
+
+message QueryRequest {
+  string dataset_name = 1;
+  // 支持的 SQL 方言（DataFusion）:
+  //   SELECT col1, col2 FROM t WHERE col3 > 10
+  //   SELECT * FROM t WHERE col3 > 10 ORDER BY col1 LIMIT 100
+  string sql = 2;
+  int64 version = 3;
+}
+
+message QueryResponse {
+  bytes arrow_ipc = 1;
+}
+
+// ========== 元数据接口 ==========
+
+message ListDatasetsRequest {}
+
+message ListDatasetsResponse {
+  repeated string names = 1;
+}
+
+message ListVersionsRequest {
+  string dataset_name = 1;
+}
+
+message DeleteRequest {
+  string dataset_name = 1;
+  int64 version = 2;
+}
+
+message DeleteResponse {
+  bool ok = 1;
+}
+
+// ========== 联合查询 (Federated Query) ==========
+
+enum DatasourceType {
+  DATASOURCE_UNKNOWN = 0;
+  DATASOURCE_POSTGRES = 1;
+  DATASOURCE_MYSQL = 2;
+  DATASOURCE_MONGODB = 3;
+  DATASOURCE_S3_PARQUET = 4;
+  DATASOURCE_LOCAL_PARQUET = 5;
+}
+
+message DatasourceConfig {
+  string name = 1;           // 数据源名称，在 SQL 中作为 catalog.schema.table 的 catalog
+  DatasourceType type = 2;
+  string connection_string = 3;
+  map<string, string> options = 4;  // 额外配置：如 region, access_key 等
+}
+
+message RegisterDatasourceRequest {
+  DatasourceConfig config = 1;
+}
+
+message RegisterDatasourceResponse {
+  bool ok = 1;
+  string message = 2;
+}
+
+message DropDatasourceRequest {
+  string name = 1;
+}
+
+message DropDatasourceResponse {
+  bool ok = 1;
+}
+
+message ListDatasourcesRequest {}
+
+message ListDatasourcesResponse {
+  repeated DatasourceConfig datasources = 1;
+}
+
+// 联合查询：可以跨多个数据源 JOIN / UNION / 聚合
+// SQL 中表名格式: datasource_name.schema.table 或 datasource_name.table
+message FederatedQueryRequest {
+  string sql = 1;
+  // 查询超时（秒），0 使用默认 60s
+  int32 timeout_seconds = 2;
+  // 是否收集执行计划
+  bool include_explain = 3;
+}
+
+message FederatedQueryResponse {
+  bytes arrow_ipc = 1;
+  // 当 include_explain=true 时首条消息会包含执行计划 JSON
+  string execution_plan_json = 2;
+  // 查询耗时（毫秒）
+  int64 elapsed_ms = 3;
+}
+
+// Explain（仅获取执行计划，不执行）
+message ExplainRequest {
+  string sql = 1;
+  bool verbose = 2;
+}
+
+message ExplainResponse {
+  string plan_json = 1;
+  string plan_text = 2;
+}
+
+// 查询统计 / 慢查询
+message QueryStats {
+  string query_id = 1;
+  string sql = 2;
+  int64 start_time_ms = 3;
+  int64 elapsed_ms = 4;
+  int64 rows_returned = 5;
+  bool is_slow = 6;  // > 5秒
+  repeated string accessed_datasources = 7;
+  string error = 8;
+}
+
+message SlowQueryLogRequest {
+  int32 limit = 1;  // 最近 N 条
+}
+
+message SlowQueryLogResponse {
+  repeated QueryStats queries = 1;
+}
+
+// ========== 服务 ==========
+
+service ColumnarGateway {
+  // 双向流式上传：客户端按 record batch 分片推送（> 10GB 场景）
+  rpc Upload(stream UploadRequest) returns (UploadResponse);
+
+  // 服务端流式下载：服务端按 record batch 分片返回
+  rpc Download(DownloadRequest) returns (stream DownloadResponse);
+
+  // 查询：服务端按 record batch 流式返回结果
+  rpc Query(QueryRequest) returns (stream QueryResponse);
+
+  // 元数据
+  rpc ListDatasets(ListDatasetsRequest) returns (ListDatasetsResponse);
+  rpc ListVersions(ListVersionsRequest) returns (VersionList);
+  rpc Delete(DeleteRequest) returns (DeleteResponse);
+
+  // ========== 联合查询 ==========
+
+  // 注册数据源
+  rpc RegisterDatasource(RegisterDatasourceRequest) returns (RegisterDatasourceResponse);
+  rpc DropDatasource(DropDatasourceRequest) returns (DropDatasourceResponse);
+  rpc ListDatasources(ListDatasourcesRequest) returns (ListDatasourcesResponse);
+
+  // 跨数据源联合查询
+  rpc FederatedQuery(FederatedQueryRequest) returns (stream FederatedQueryResponse);
+
+  // 执行计划展示
+  rpc Explain(ExplainRequest) returns (ExplainResponse);
+
+  // 慢查询日志
+  rpc SlowQueryLog(SlowQueryLogRequest) returns (SlowQueryLogResponse);
+}

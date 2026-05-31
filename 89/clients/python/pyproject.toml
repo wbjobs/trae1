@@ -1,0 +1,16 @@
+[project]
+name = "columnar-gateway-client"
+version = "0.1.0"
+description = "Python client for the Arrow columnar data gateway"
+requires-python = ">=3.10"
+dependencies = [
+    "grpcio>=1.60",
+    "grpcio-tools>=1.60",
+    "pyarrow>=16.0",
+    "pandas>=2.0",
+    "protobuf>=5.26",
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"

@@ -1,0 +1,54 @@
+[package]
+name = "columnar-gateway"
+version = "0.1.0"
+edition = "2021"
+description = "Arrow columnar data transfer gateway (gRPC)"
+
+[dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs", "io-util", "sync", "signal", "time"] }
+tokio-postgres = { version = "0.7", features = ["with-time"] }
+mysql_async = { version = "0.34", default-features = false, features = ["tokio1", "native-tls-backend"] }
+tonic = { version = "0.12", features = ["gzip"] }
+prost = "0.13"
+prost-types = "0.13"
+arrow = { version = "54", features = ["ipc", "json", "ffi", "compute", "dictionary"] }
+arrow-ipc = { version = "54", features = ["lz4"] }
+arrow-cast = "54"
+arrow-select = "54"
+datafusion = { version = "43", features = ["avro", "json"] }
+datafusion-common = "43"
+datafusion-expr = "43"
+datafusion-execution = "43"
+datafusion-optimizer = "43"
+datafusion-sql = "43"
+datafusion-physical-expr = "43"
+datafusion-physical-plan = "43"
+object_store = { version = "0.11", features = ["aws"] }
+object_store_aws = "0.11"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+bytes = "1"
+async-stream = "0.3"
+futures = "0.3"
+tokio-stream = "0.1"
+thiserror = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+parking_lot = "0.12"
+dashmap = "6"
+uuid = { version = "1", features = ["v4"] }
+clap = { version = "4", features = ["derive"] }
+sqlparser = "0.50"
+itertools = "0.14"
+regex = "1"
+
+[build-dependencies]
+tonic-build = "0.12"
+
+[[bin]]
+name = "columnar-gateway"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
