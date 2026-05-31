@@ -1,0 +1,41 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: user-profile-store
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: 0
+      timeout: 5s
+      lettuce:
+        pool:
+          max-active: 64
+          max-idle: 16
+          min-idle: 4
+          max-wait: 3s
+
+profile:
+  redis:
+    key-prefix: profile:tag:
+  cache:
+    maximum-size: 256
+    expire-after-write: 5m
+  sharding:
+    shard-count: ${SHARD_COUNT:64}
+    parallelism: ${SHARD_PARALLELISM:16}
+    nodes:
+      - shard-id: 0
+        host: ${SHARD0_HOST:localhost}
+        port: ${SHARD0_PORT:6379}
+        password: ${SHARD0_PASSWORD:}
+        database: 0
+    sentinel:
+      enabled: ${SENTINEL_ENABLED:false}
+      master-name: ${SENTINEL_MASTER:mymaster}
+      nodes: ${SENTINEL_NODES:localhost:26379}
+      check-interval-ms: 5000
+      failover-timeout-ms: 10000
