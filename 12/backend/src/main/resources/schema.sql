@@ -1,0 +1,222 @@
+-- 创建数据库
+CREATE DATABASE IF NOT EXISTS task_scheduler DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+USE task_scheduler;
+
+-- 任务配置表
+CREATE TABLE IF NOT EXISTS task_config (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
+    task_name VARCHAR(100) NOT NULL UNIQUE COMMENT '任务名称',
+    task_group VARCHAR(100) NOT NULL COMMENT '任务组',
+    cron_expression VARCHAR(50) NOT NULL COMMENT 'Cron表达式',
+    task_type VARCHAR(20) NOT NULL COMMENT '任务类型',
+    task_params TEXT COMMENT '任务参数',
+    target_server VARCHAR(100) NOT NULL COMMENT '目标服务器',
+    execute_command TEXT NOT NULL COMMENT '执行命令',
+    description TEXT COMMENT '任务描述',
+    status TINYINT DEFAULT 0 COMMENT '状态: 0-停止, 1-运行',
+    retry_count INT DEFAULT 3 COMMENT '重试次数',
+    retry_interval INT DEFAULT 5 COMMENT '重试间隔(秒)',
+    timeout INT DEFAULT 300 COMMENT '超时时间(秒)',
+    last_execute_time DATETIME COMMENT '上次执行时间',
+    next_execute_time DATETIME COMMENT '下次执行时间',
+    last_execute_result VARCHAR(20) COMMENT '上次执行结果',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted TINYINT DEFAULT 0 COMMENT '是否删除: 0-否, 1-是',
+    INDEX idx_task_group (task_group),
+    INDEX idx_status (status),
+    INDEX idx_target_server (target_server)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='任务配置表';
+
+-- 任务日志表
+CREATE TABLE IF NOT EXISTS task_log (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
+    task_id BIGINT NOT NULL COMMENT '任务ID',
+    task_name VARCHAR(100) NOT NULL COMMENT '任务名称',
+    server_name VARCHAR(100) NOT NULL COMMENT '目标服务器',
+    execute_status TINYINT NOT NULL COMMENT '执行状态: 0-失败, 1-执行中, 2-成功',
+    execute_result TEXT COMMENT '执行结果',
+    error_message TEXT COMMENT '错误信息',
+    start_time DATETIME COMMENT '开始时间',
+    end_time DATETIME COMMENT '结束时间',
+    duration BIGINT COMMENT '执行时长(秒)',
+    retry_attempts INT DEFAULT 0 COMMENT '重试次数',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    INDEX idx_task_id (task_id),
+    INDEX idx_execute_status (execute_status),
+    INDEX idx_start_time (start_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='任务日志表';
+
+-- 服务器节点表
+CREATE TABLE IF NOT EXISTS server_node (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
+    server_name VARCHAR(100) NOT NULL UNIQUE COMMENT '服务器名称',
+    ip_address VARCHAR(50) NOT NULL COMMENT 'IP地址',
+    port INT DEFAULT 22 COMMENT '端口',
+    username VARCHAR(100) NOT NULL COMMENT '用户名',
+    password VARCHAR(200) COMMENT '密码',
+    ssh_key TEXT COMMENT 'SSH密钥',
+    os_type VARCHAR(50) COMMENT '操作系统类型',
+    tags VARCHAR(200) COMMENT '标签',
+    status TINYINT DEFAULT 0 COMMENT '状态: 0-离线, 1-在线',
+    cpu_usage INT COMMENT 'CPU使用率(%)',
+    memory_usage INT COMMENT '内存使用率(%)',
+    disk_usage INT COMMENT '磁盘使用率(%)',
+    last_heartbeat DATETIME COMMENT '最后心跳时间',
+    remark TEXT COMMENT '备注',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted TINYINT DEFAULT 0 COMMENT '是否删除: 0-否, 1-是',
+    INDEX idx_ip_address (ip_address),
+    INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='服务器节点表';
+
+-- Quartz相关表
+CREATE TABLE IF NOT EXISTS QRTZ_JOB_DETAILS (
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    JOB_NAME VARCHAR(200) NOT NULL,
+    JOB_GROUP VARCHAR(200) NOT NULL,
+    DESCRIPTION VARCHAR(250) NULL,
+    JOB_CLASS_NAME VARCHAR(250) NOT NULL,
+    IS_DURABLE VARCHAR(1) NOT NULL,
+    IS_NONCONCURRENT VARCHAR(1) NOT NULL,
+    IS_UPDATE_DATA VARCHAR(1) NOT NULL,
+    REQUESTS_RECOVERY VARCHAR(1) NOT NULL,
+    JOB_DATA BLOB NULL,
+    PRIMARY KEY (SCHED_NAME, JOB_NAME, JOB_GROUP)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS QRTZ_TRIGGERS (
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    TRIGGER_NAME VARCHAR(200) NOT NULL,
+    TRIGGER_GROUP VARCHAR(200) NOT NULL,
+    JOB_NAME VARCHAR(200) NOT NULL,
+    JOB_GROUP VARCHAR(200) NOT NULL,
+    DESCRIPTION VARCHAR(250) NULL,
+    NEXT_FIRE_TIME BIGINT(13) NULL,
+    PREV_FIRE_TIME BIGINT(13) NULL,
+    PRIORITY INTEGER NULL,
+    TRIGGER_STATE VARCHAR(16) NOT NULL,
+    TRIGGER_TYPE VARCHAR(8) NOT NULL,
+    START_TIME BIGINT(13) NOT NULL,
+    END_TIME BIGINT(13) NULL,
+    CALENDAR_NAME VARCHAR(200) NULL,
+    MISFIRE_INSTR SMALLINT(2) NULL,
+    JOB_DATA BLOB NULL,
+    PRIMARY KEY (SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP),
+    FOREIGN KEY (SCHED_NAME, JOB_NAME, JOB_GROUP)
+    REFERENCES QRTZ_JOB_DETAILS(SCHED_NAME, JOB_NAME, JOB_GROUP)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS QRTZ_CRON_TRIGGERS (
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    TRIGGER_NAME VARCHAR(200) NOT NULL,
+    TRIGGER_GROUP VARCHAR(200) NOT NULL,
+    CRON_EXPRESSION VARCHAR(120) NOT NULL,
+    TIME_ZONE_ID VARCHAR(80),
+    PRIMARY KEY (SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP),
+    FOREIGN KEY (SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP)
+    REFERENCES QRTZ_TRIGGERS(SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS QRTZ_SIMPLE_TRIGGERS (
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    TRIGGER_NAME VARCHAR(200) NOT NULL,
+    TRIGGER_GROUP VARCHAR(200) NOT NULL,
+    REPEAT_COUNT BIGINT(7) NOT NULL,
+    REPEAT_INTERVAL BIGINT(12) NOT NULL,
+    TIMES_TRIGGERED BIGINT(10) NOT NULL,
+    PRIMARY KEY (SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP),
+    FOREIGN KEY (SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP)
+    REFERENCES QRTZ_TRIGGERS(SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS QRTZ_SCHEDULER_STATE (
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    INSTANCE_NAME VARCHAR(200) NOT NULL,
+    LAST_CHECKIN_TIME BIGINT(13) NOT NULL,
+    CHECKIN_INTERVAL BIGINT(13) NOT NULL,
+    PRIMARY KEY (SCHED_NAME, INSTANCE_NAME)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS QRTZ_LOCKS (
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    LOCK_NAME VARCHAR(40) NOT NULL,
+    PRIMARY KEY (SCHED_NAME, LOCK_NAME)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS QRTZ_PAUSED_TRIGGER_GRPS (
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    TRIGGER_GROUP VARCHAR(200) NOT NULL,
+    PRIMARY KEY (SCHED_NAME, TRIGGER_GROUP)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS QRTZ_FIRED_TRIGGERS (
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    ENTRY_ID VARCHAR(95) NOT NULL,
+    TRIGGER_NAME VARCHAR(200) NOT NULL,
+    TRIGGER_GROUP VARCHAR(200) NOT NULL,
+    INSTANCE_NAME VARCHAR(200) NOT NULL,
+    FIRED_TIME BIGINT(13) NOT NULL,
+    SCHED_TIME BIGINT(13) NOT NULL,
+    PRIORITY INTEGER NOT NULL,
+    STATE VARCHAR(16) NOT NULL,
+    JOB_NAME VARCHAR(200) NULL,
+    JOB_GROUP VARCHAR(200) NULL,
+    IS_NONCONCURRENT VARCHAR(1) NULL,
+    REQUESTS_RECOVERY VARCHAR(1) NULL,
+    PRIMARY KEY (SCHED_NAME, ENTRY_ID)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS QRTZ_BLOB_TRIGGERS (
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    TRIGGER_NAME VARCHAR(200) NOT NULL,
+    TRIGGER_GROUP VARCHAR(200) NOT NULL,
+    BLOB_DATA BLOB NULL,
+    PRIMARY KEY (SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP),
+    FOREIGN KEY (SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP)
+    REFERENCES QRTZ_TRIGGERS(SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS QRTZ_CALENDARS (
+    SCHED_NAME VARCHAR(120) NOT NULL,
+    CALENDAR_NAME VARCHAR(200) NOT NULL,
+    CALENDAR BLOB NOT NULL,
+    PRIMARY KEY (SCHED_NAME, CALENDAR_NAME)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 任务告警表
+CREATE TABLE IF NOT EXISTS task_alert (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
+    task_id BIGINT NOT NULL COMMENT '任务ID',
+    task_name VARCHAR(100) NOT NULL COMMENT '任务名称',
+    alert_type VARCHAR(50) NOT NULL COMMENT '告警类型',
+    alert_level INT NOT NULL COMMENT '告警级别: 1-低, 2-中, 3-高',
+    alert_message VARCHAR(500) COMMENT '告警消息',
+    alert_detail TEXT COMMENT '告警详情',
+    status INT DEFAULT 0 COMMENT '状态: 0-未处理, 1-已处理',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    handle_time DATETIME COMMENT '处理时间',
+    handle_by VARCHAR(100) COMMENT '处理人',
+    handle_remark TEXT COMMENT '处理备注',
+    INDEX idx_task_id (task_id),
+    INDEX idx_status (status),
+    INDEX idx_alert_level (alert_level)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='任务告警表';
+
+-- 插入初始数据
+INSERT INTO server_node (server_name, ip_address, port, username, os_type, status, tags, remark) VALUES
+('web-server-01', '192.168.1.101', 22, 'root', 'Linux', 1, 'web,production', 'Web服务器01'),
+('web-server-02', '192.168.1.102', 22, 'root', 'Linux', 1, 'web,production', 'Web服务器02'),
+('db-server-01', '192.168.1.110', 22, 'root', 'Linux', 1, 'database,production', '数据库服务器01'),
+('cache-server-01', '192.168.1.120', 22, 'root', 'Linux', 1, 'cache,production', '缓存服务器01')
+ON DUPLICATE KEY UPDATE server_name = VALUES(server_name);
+
+INSERT INTO task_config (task_name, task_group, cron_expression, task_type, target_server, execute_command, description, retry_count, retry_interval, timeout) VALUES
+('清理临时文件', '系统维护', '0 0 2 * * ?', 'SHELL', 'web-server-01', 'find /tmp -type f -mtime +7 -delete', '每天凌晨2点清理7天前的临时文件', 3, 5, 300),
+('数据库备份', '数据备份', '0 0 3 * * ?', 'SHELL', 'db-server-01', 'mysqldump -u root -p123456 --all-databases > /backup/db_$(date +%Y%m%d).sql', '每天凌晨3点备份数据库', 3, 10, 600),
+('日志清理', '系统维护', '0 0 4 * * ?', 'SHELL', 'web-server-01', 'find /var/log -name "*.log" -mtime +30 -delete', '每天凌晨4点清理30天前的日志', 2, 5, 120),
+('缓存清理', '性能优化', '0 0/30 * * * ?', 'SHELL', 'cache-server-01', 'redis-cli FLUSHALL', '每30分钟清理Redis缓存', 2, 5, 60),
+('健康检查', '监控告警', '0 */5 * * * ?', 'HTTP', 'web-server-01', 'curl -s http://localhost:8080/health', '每5分钟检查服务健康状态', 1, 5, 30)
+ON DUPLICATE KEY UPDATE task_name = VALUES(task_name);
