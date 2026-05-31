@@ -1,0 +1,134 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: polardb-global-index-sync
+  main:
+    allow-bean-definition-overriding: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: prometheus, health, metrics
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+global-index:
+  sync:
+    destination: global_index_sync
+    zookeeper:
+      servers: 127.0.0.1:2181
+      namespace: global-index-sync
+      connection-timeout-ms: 15000
+      session-timeout-ms: 60000
+      retry-base-sleep-ms: 1000
+      retry-max-retries: 3
+
+    center-db:
+      url: jdbc:polardb://127.0.0.1:3306/global_index_db?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&rewriteBatchedStatements=true
+      username: root
+      password: root
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      maximum-pool-size: 64
+      minimum-idle: 16
+      connection-timeout: 3000
+      idle-timeout: 60000
+      max-lifetime: 1800000
+
+    shards:
+      - id: shard0
+        name: PolarDB分片0
+        canal-server: 127.0.0.1:11111
+        destination: polardb_shard0
+        username: canal
+        password: canal
+        db-url: jdbc:polardb://127.0.0.1:3307/shard_db?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+        db-username: root
+        db-password: root
+        shard-key: user_id
+        global-id-column: order_id
+        source-table: shard_db.t_order
+        batch-size: 1024
+
+      - id: shard1
+        name: PolarDB分片1
+        canal-server: 127.0.0.1:11112
+        destination: polardb_shard1
+        username: canal
+        password: canal
+        db-url: jdbc:polardb://127.0.0.1:3308/shard_db?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+        db-username: root
+        db-password: root
+        shard-key: user_id
+        global-id-column: order_id
+        source-table: shard_db.t_order
+        batch-size: 1024
+
+      - id: shard2
+        name: PolarDB分片2
+        canal-server: 127.0.0.1:11113
+        destination: polardb_shard2
+        username: canal
+        password: canal
+        db-url: jdbc:polardb://127.0.0.1:3309/shard_db?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+        db-username: root
+        db-password: root
+        shard-key: user_id
+        global-id-column: order_id
+        source-table: shard_db.t_order
+        batch-size: 1024
+
+    index-table:
+      schema: global_index_db
+      table: t_global_index
+      shard-key-column: shard_key
+      global-id-column: global_id
+      shard-id-column: shard_id
+      create-time-column: gmt_create
+      update-time-column: gmt_modified
+
+    processor:
+      thread-pool-size: 32
+      batch-queue-capacity: 10000
+      flush-interval-ms: 100
+      max-batch-size: 512
+
+    rebalance:
+      enabled: true
+      threads: 8
+      virtual-nodes: 160
+      check-interval-ms: 300000
+      batch-size: 500
+      enable-dual-read: true
+      dual-read-timeout-ms: 3000
+      max-retry-times: 3
+      retry-interval-ms: 1000
+      dry-run: false
+
+    join:
+      enabled: true
+      timeout-ms: 30000
+      executor-threads: 8
+      executor-max-threads: 32
+      predicate-pushdown-enabled: true
+      result-cache-enabled: true
+      hash-join-threshold: 1000
+      default-join-algorithm: AUTO
+      cache:
+        enabled: true
+        ttl-seconds: 5
+        max-size: 1000
+      stats:
+        enabled: true
+        refresh-interval-ms: 60000
+
+logging:
+  level:
+    com.alibaba.polardb.index: INFO
+    org.apache.zookeeper: WARN
+    org.apache.curator: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
