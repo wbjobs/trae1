@@ -1,0 +1,168 @@
+smb:
+  server: "192.168.1.100"
+  port: 445
+  username: "admin"
+  password: ""
+  domain: "CORP"
+  share_name: "SharedFiles"
+  watch_paths:
+    - "/"
+    - "Documents"
+    - "Reports"
+  poll_interval: 5
+  monitored_extensions:
+    - ".doc"
+    - ".docx"
+    - ".xls"
+    - ".xlsx"
+    - ".pdf"
+  dedup_window_ms: 200
+  state_file: "data/audit_state.json"
+
+elasticsearch:
+  hosts:
+    - "http://localhost:9200"
+  username: "elastic"
+  password: ""
+  index_prefix: "nas_audit"
+  retention_days: 90
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  cors_origins:
+    - "http://localhost:3000"
+    - "http://127.0.0.1:3000"
+
+logging:
+  level: "INFO"
+  file: "logs/nas_audit.log"
+
+dlp:
+  sensitive:
+    enabled: true
+    tika_server: "http://localhost:9998"
+    tika_timeout: 30
+    scan_extensions:
+      - ".doc"
+      - ".docx"
+      - ".pdf"
+      - ".txt"
+      - ".xls"
+      - ".xlsx"
+      - ".ppt"
+      - ".pptx"
+      - ".csv"
+      - ".rtf"
+    max_file_size_mb: 50
+    min_text_length: 2
+    max_text_length: 500000
+    similarity_threshold: 0.85
+    snippet_context_chars: 50
+    scan_concurrency: 4
+    alert_cooldown_seconds: 300
+    words:
+      - word: "机密"
+        category: "保密等级"
+        severity: "critical"
+        description: "机密级文档"
+      - word: "绝密"
+        category: "保密等级"
+        severity: "critical"
+        description: "绝密级文档"
+      - word: "内部资料"
+        category: "保密等级"
+        severity: "high"
+        description: "内部资料"
+      - word: "薪资"
+        category: "人事薪酬"
+        severity: "critical"
+        description: "薪资信息泄露"
+      - word: "工资单"
+        category: "人事薪酬"
+        severity: "critical"
+        description: "工资单泄露"
+      - word: "客户名单"
+        category: "客户数据"
+        severity: "critical"
+        description: "客户名单泄露"
+      - word: "客户信息"
+        category: "客户数据"
+        severity: "high"
+        description: "客户信息泄露"
+      - word: "身份证号"
+        category: "个人信息"
+        severity: "critical"
+        description: "身份证号泄露"
+      - word: "银行卡号"
+        category: "个人信息"
+        severity: "critical"
+        description: "银行卡号泄露"
+      - word: "合同"
+        category: "合同协议"
+        severity: "high"
+        description: "合同文件"
+      - word: "董事会决议"
+        category: "公司治理"
+        severity: "critical"
+        description: "董事会决议"
+      - word: "并购方案"
+        category: "投资并购"
+        severity: "critical"
+        description: "并购方案"
+      - word: "IPO"
+        category: "投资并购"
+        severity: "high"
+        description: "IPO相关文档"
+      - word: "源代码"
+        category: "技术资产"
+        severity: "critical"
+        description: "源代码泄露"
+      - word: "API密钥"
+        category: "技术资产"
+        severity: "critical"
+        description: "API密钥泄露"
+      - word: "密码"
+        category: "技术资产"
+        severity: "high"
+        description: "密码信息"
+      - word: "财务报表"
+        category: "财务数据"
+        severity: "high"
+        description: "财务报表"
+      - word: "审计报告"
+        category: "财务数据"
+        severity: "high"
+        description: "审计报告"
+      - word: "专利"
+        category: "知识产权"
+        severity: "high"
+        description: "专利文件"
+      - word: "商标"
+        category: "知识产权"
+        severity: "medium"
+        description: "商标文件"
+
+  alert:
+    enabled: true
+    wecom_webhook: "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=YOUR_KEY"
+    wecom_mentioned_mobiles: []
+    smtp_host: "smtp.example.com"
+    smtp_port: 465
+    smtp_use_ssl: true
+    smtp_username: "alert@example.com"
+    smtp_password: "YOUR_SMTP_PASSWORD"
+    smtp_from: "NAS审计告警 <alert@example.com>"
+    smtp_to:
+      - "admin@example.com"
+      - "security@example.com"
+    alert_on_severity:
+      - "high"
+      - "critical"
+
+  quarantine:
+    enabled: true
+    quarantine_path: "Quarantine"
+    auto_quarantine: false
+    auto_quarantine_severity:
+      - "critical"

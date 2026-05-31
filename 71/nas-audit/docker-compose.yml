@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: nas-audit-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  tika:
+    image: apache/tika:2.9.1.0
+    container_name: nas-audit-tika
+    ports:
+      - "9998:9998"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9998/tika || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nas-audit-backend
+    environment:
+      - SMB_SERVER=${SMB_SERVER:-192.168.1.100}
+      - SMB_PORT=${SMB_PORT:-445}
+      - SMB_USERNAME=${SMB_USERNAME:-admin}
+      - SMB_PASSWORD=${SMB_PASSWORD:-}
+      - SMB_DOMAIN=${SMB_DOMAIN:-CORP}
+      - SMB_SHARE=${SMB_SHARE:-SharedFiles}
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - TIKA_SERVER=http://tika:9998
+    ports:
+      - "8000:8000"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      tika:
+        condition: service_healthy
+    volumes:
+      - ./backend/config.yaml:/app/config.yaml
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: nas-audit-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  es_data:
+    driver: local
