@@ -1,0 +1,9 @@
+grpcio>=1.50.0
+grpcio-tools>=1.50.0
+p4runtime-sh>=0.0.3
+flask>=2.0.0
+flask-cors>=3.0.0
+prometheus-client>=0.14.0
+pyyaml>=6.0
+scikit-learn>=1.0.0
+numpy>=1.20.0
