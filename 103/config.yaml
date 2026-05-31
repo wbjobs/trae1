@@ -1,0 +1,51 @@
+mongodb:
+  uri: "mongodb://localhost:27017"
+  database: "mydb"
+  replica_set_members:
+    - uri: "mongodb://localhost:27017"
+      name: "primary"
+    - uri: "mongodb://localhost:27018"
+      name: "secondary1"
+    - uri: "mongodb://localhost:27019"
+      name: "secondary2"
+
+clickhouse:
+  dsn: "tcp://localhost:9000"
+  database: "mydb"
+
+tables:
+  - source: "users"
+    target: "users"
+    primary_key: "id"
+    version_field: "version"
+    pipeline: "flatten_users"
+  - source: "orders"
+    target: "orders"
+    primary_key: "id"
+    version_field: "version"
+    pipeline: "order_pipeline"
+
+sync:
+  conflict_strategy: "last_write_win"
+  batch_size: 100
+  batch_timeout_ms: 1000
+
+resilience:
+  resume_policy: "auto"
+  max_reconnect: 10
+  cache_dir: "./cache"
+  cache_max_size_mb: 1024
+  election_timeout_ms: 5000
+
+etl:
+  enabled: true
+  pipeline_file: "./pipelines.yaml"
+  debug_server:
+    enabled: true
+    addr: ":8081"
+  dlq:
+    type: "kafka"
+    brokers:
+      - "localhost:9092"
+    topic: "etl_dlq"
+    buffer_size: 1000

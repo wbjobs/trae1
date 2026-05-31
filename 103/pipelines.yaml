@@ -1,0 +1,72 @@
+pipelines:
+  - name: "flatten_users"
+    stages:
+      - type: "filter"
+        name: "filter_active"
+        config:
+          script: |
+            var status = doc.status || '';
+            return status === 'active' || status === 'premium';
+
+      - type: "transform"
+        name: "flatten_address"
+        config:
+          script: |
+            var result = Object.assign({}, doc);
+            if (doc.address && typeof doc.address === 'object') {
+              for (var key in doc.address) {
+                result['address_' + key] = doc.address[key];
+              }
+              delete result.address;
+            }
+            result.age = new Date().getFullYear() - (doc.birth_year || 0);
+            return result;
+
+      - type: "project"
+        name: "select_fields"
+        config:
+          fields:
+            - "name"
+            - "email"
+            - "age"
+            - "address_city"
+            - "address_country"
+          renames:
+            "address_city": "city"
+            "address_country": "country"
+
+      - type: "convert"
+        name: "type_conversion"
+        config:
+          script: |
+            var result = Object.assign({}, doc);
+            if (result.age) {
+              result.age = parseInt(result.age, 10);
+            }
+            return result;
+
+  - name: "order_pipeline"
+    stages:
+      - type: "filter"
+        name: "filter_valid_orders"
+        config:
+          script: |
+            return doc.total > 0 && doc.status !== 'cancelled';
+
+      - type: "transform"
+        name: "calculate_fields"
+        config:
+          script: |
+            var result = Object.assign({}, doc);
+            result.year = new Date(doc.created_at).getFullYear();
+            result.month = new Date(doc.created_at).getMonth() + 1;
+            result.total_usd = result.total * 1.0;
+            return result;
+
+      - type: "convert"
+        name: "type_convert"
+        config:
+          field_type:
+            total: "float64"
+            year: "int64"
+            month: "int64"
