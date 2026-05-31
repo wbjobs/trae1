@@ -1,0 +1,68 @@
+server:
+  host: "0.0.0.0"
+  port: 8080
+
+rtmp:
+  enabled: true
+  listen: ":1935"
+  app: "live"
+
+srt:
+  enabled: true
+  listen: ":9000"
+
+hls_output:
+  root: "./out/hls"
+  segment_duration: 4
+  segment_count: 6
+
+ffmpeg:
+  binary: "ffmpeg"
+  max_retries: 3
+  retry_interval: 5
+  graceful_shutdown_timeout: 10
+
+profiles:
+  - name: "720p"
+    resolution: "1280x720"
+    video_bitrate: "2000k"
+    audio_bitrate: "128k"
+    preset: "veryfast"
+  - name: "1080p"
+    resolution: "1920x1080"
+    video_bitrate: "4000k"
+    audio_bitrate: "192k"
+    preset: "veryfast"
+
+elasticsearch:
+  enabled: false
+  addresses:
+    - "http://127.0.0.1:9200"
+  index: "transcode-logs"
+  username: ""
+  password: ""
+
+stream_monitor:
+  enabled: true
+  disconnect_timeout: 30
+  probe_interval: 5
+  probe_timeout: 5
+  max_keepalive: true
+
+zombie_cleanup_interval: 60
+
+cgroups:
+  enabled: true
+  v1_mount_path: "/sys/fs/cgroup"
+  v2_mount_path: "/sys/fs/cgroup"
+  high_cpu_shares: 1024
+  medium_cpu_shares: 512
+  low_cpu_shares: 256
+  high_cpu_quota: "-1"
+  medium_cpu_quota: "80%"
+  low_cpu_quota: "40%"
+
+queue:
+  max_concurrent: 4
+  high_reserved_slots: 1
+  medium_reserved_slots: 2
