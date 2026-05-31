@@ -1,0 +1,32 @@
+version: "1.0"
+
+defaults:
+  read_bps: 0
+  write_bps: 0
+  read_iops: 0
+  write_iops: 0
+  priority: medium
+
+rules:
+  - container_id: "mysql-prod-01"
+    limits:
+      read_bps: 104857600
+      write_bps: 52428800
+      read_iops: 2000
+      write_iops: 1000
+      priority: high
+
+  - container_id: "redis-cache-02"
+    cgroup_path: "/sys/fs/cgroup/docker/abc123def456789"
+    limits:
+      read_bps: 52428800
+      write_bps: 10485760
+      read_iops: 1000
+      write_iops: 500
+      priority: medium
+
+  - container_id: "log-collector-03"
+    limits:
+      write_bps: 10485760
+      write_iops: 100
+      priority: low
