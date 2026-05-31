@@ -1,0 +1,38 @@
+[package]
+name = "cdn-edge"
+version = "0.1.0"
+edition = "2021"
+description = "Static asset CDN edge node with on-demand compression, LRU disk cache, and Prometheus metrics"
+
+[dependencies]
+hyper = { version = "1.4", features = ["full"] }
+hyper-util = { version = "0.1", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
+http = "1"
+http-body-util = "0.1"
+bytes = "1"
+futures-util = "0.3"
+async-trait = "0.1"
+anyhow = "1"
+thiserror = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+parking_lot = "0.12"
+dashmap = "6"
+lru = "0.12"
+tokio-util = { version = "0.7", features = ["io", "codec"] }
+flate2 = "1"
+brotli = "6"
+prometheus = "0.13"
+moka = { version = "0.12", features = ["future"] }
+sha2 = "0.10"
+hex = "0.4"
+path-clean = "1"
+mime_guess = "2"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
