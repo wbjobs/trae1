@@ -1,0 +1,66 @@
+{
+  "infoHash": "2414db710350c00dea5d0482298e494d8fdf65c0290ac5bddd45d54bbda10c3f",
+  "fileName": "large-library.js",
+  "totalSize": 10489936,
+  "chunkSize": 1048576,
+  "totalChunks": 11,
+  "fileHash": "2414db710350c00dea5d0482298e494d8fdf65c0290ac5bddd45d54bbda10c3f",
+  "chunks": [
+    {
+      "index": 0,
+      "size": 1048576,
+      "hash": "9d8a66cda6aed7e1993a93ecd701aa052577ed1bc580a41a99027ec08777c748"
+    },
+    {
+      "index": 1,
+      "size": 1048576,
+      "hash": "8747924c374878a0f4dbc9d438975dda8b7a15b64be5c5bbf18449226b63d2ec"
+    },
+    {
+      "index": 2,
+      "size": 1048576,
+      "hash": "f11cb2c09a4526650873775c27f011f6ae27dbd3e61c3ee9260184554cdfa665"
+    },
+    {
+      "index": 3,
+      "size": 1048576,
+      "hash": "6585a240513717bbd450830be17fc12953ba458b0a556cf3528c7558367c2bfb"
+    },
+    {
+      "index": 4,
+      "size": 1048576,
+      "hash": "c6714bd7da688591318cf9e27bdb67fb2fe0991c85255811eb4c5d9f61609a2b"
+    },
+    {
+      "index": 5,
+      "size": 1048576,
+      "hash": "6ccef65b142d178099833f32171507915886501c2160b9c6248430033dbfca3b"
+    },
+    {
+      "index": 6,
+      "size": 1048576,
+      "hash": "b7402db6597b71ebf2f1c20fb1b9514ddb49c12a8ce363d1e86b484294e1fb76"
+    },
+    {
+      "index": 7,
+      "size": 1048576,
+      "hash": "a9bd9a368b3178b51c9cb911df63cb24e3d3d90d2f6f03a7da5c94826985cbb8"
+    },
+    {
+      "index": 8,
+      "size": 1048576,
+      "hash": "621d9ad22bfdd43c6034864cd8d88975c45cbbfa181db6f06a616e9239300a9c"
+    },
+    {
+      "index": 9,
+      "size": 1048576,
+      "hash": "0a9390dd22149718d7ee20cf3cdda53850ae170d5088b4db2424997e7c6fad13"
+    },
+    {
+      "index": 10,
+      "size": 4176,
+      "hash": "77ac2c15687be85330662118b24983f5ae7f4d265d8c1c0e6e34382492ec9c81"
+    }
+  ],
+  "createdAt": "2026-05-23T16:54:37.685Z"
+}

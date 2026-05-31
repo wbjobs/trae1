@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>P2P CDN 管理面板</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #16213e 0%, #0f3460 100%);
+      padding: 20px;
+      text-align: center;
+      border-bottom: 3px solid #e94560;
+    }
+
+    .header h1 {
+      font-size: 2em;
+      margin-bottom: 5px;
+    }
+
+    .header .subtitle {
+      color: #a0a0a0;
+      font-size: 0.9em;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .stats-overview {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .stat-card {
+      background: #16213e;
+      border-radius: 12px;
+      padding: 25px;
+      border: 1px solid #2a2a4a;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(233, 69, 96, 0.2);
+    }
+
+    .stat-card .icon {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+    }
+
+    .stat-card .label {
+      color: #a0a0a0;
+      font-size: 0.9em;
+      margin-bottom: 5px;
+    }
+
+    .stat-card .value {
+      font-size: 2em;
+      font-weight: bold;
+      color: #e94560;
+    }
+
+    .stat-card.upload .value {
+      color: #4ecca3;
+    }
+
+    .stat-card.download .value {
+      color: #00d9ff;
+    }
+
+    .main-content {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+
+    .panel {
+      background: #16213e;
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid #2a2a4a;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #2a2a4a;
+    }
+
+    .panel-header h2 {
+      font-size: 1.3em;
+      color: #e0e0e0;
+    }
+
+    .refresh-btn {
+      background: #e94560;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9em;
+      transition: background 0.3s ease;
+    }
+
+    .refresh-btn:hover {
+      background: #d63850;
+    }
+
+    .node-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .node-table th {
+      background: #0f3460;
+      padding: 12px;
+      text-align: left;
+      font-size: 0.85em;
+      text-transform: uppercase;
+      color: #a0a0a0;
+      border-bottom: 2px solid #e94560;
+    }
+
+    .node-table td {
+      padding: 12px;
+      border-bottom: 1px solid #2a2a4a;
+      font-size: 0.9em;
+    }
+
+    .node-table tr:hover {
+      background: rgba(233, 69, 96, 0.1);
+    }
+
+    .node-id {
+      font-family: monospace;
+      font-size: 0.8em;
+      color: #00d9ff;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 0.8em;
+      font-weight: bold;
+    }
+
+    .status-badge.online {
+      background: #4ecca3;
+      color: #1a1a2e;
+    }
+
+    .status-badge.offline {
+      background: #e94560;
+      color: white;
+    }
+
+    .progress-bar {
+      background: #2a2a4a;
+      border-radius: 10px;
+      overflow: hidden;
+      height: 20px;
+    }
+
+    .progress {
+      background: linear-gradient(90deg, #e94560, #ff6b6b);
+      height: 100%;
+      border-radius: 10px;
+      transition: width 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75em;
+      color: white;
+    }
+
+    .chart-container {
+      margin-top: 30px;
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .chart-buttons {
+      display: flex;
+      gap: 10px;
+    }
+
+    .chart-btn {
+      background: transparent;
+      border: 1px solid #2a2a4a;
+      color: #a0a0a0;
+      padding: 8px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85em;
+      transition: all 0.3s ease;
+    }
+
+    .chart-btn:hover, .chart-btn.active {
+      background: #e94560;
+      border-color: #e94560;
+      color: white;
+    }
+
+    .chart {
+      background: #1a1a2e;
+      border-radius: 8px;
+      padding: 20px;
+      height: 300px;
+      position: relative;
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 40px;
+      color: #6c757d;
+    }
+
+    .no-data .icon {
+      font-size: 3em;
+      margin-bottom: 10px;
+    }
+
+    .footer {
+      text-align: center;
+      padding: 20px;
+      color: #6c757d;
+      font-size: 0.85em;
+    }
+
+    @media (max-width: 768px) {
+      .stats-overview {
+        grid-template-columns: 1fr;
+      }
+
+      .node-table {
+        font-size: 0.8em;
+      }
+
+      .node-table th, .node-table td {
+        padding: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🎛️ P2P CDN 管理面板</h1>
+    <div class="subtitle">实时监控 P2P 网络状态与节点信息</div>
+  </div>
+
+  <div class="container">
+    <div class="stats-overview">
+      <div class="stat-card">
+        <div class="icon">🌐</div>
+        <div class="label">在线节点数</div>
+        <div class="value" id="onlineCount">0</div>
+      </div>
+      <div class="stat-card upload">
+        <div class="icon">📤</div>
+        <div class="label">总上传流量</div>
+        <div class="value" id="totalUpload">0 B</div>
+      </div>
+      <div class="stat-card download">
+        <div class="icon">📥</div>
+        <div class="label">总下载流量</div>
+        <div class="value" id="totalDownload">0 B</div>
+      </div>
+      <div class="stat-card">
+        <div class="icon">⏱️</div>
+        <div class="label">运行时间</div>
+        <div class="value" id="uptime">00:00:00</div>
+      </div>
+      <div class="stat-card" style="border-color: #e94560;">
+        <div class="icon">⚠️</div>
+        <div class="label">缺失分块</div>
+        <div class="value" id="missingChunks" style="color: #e94560;">0</div>
+      </div>
+      <div class="stat-card" style="border-color: #4ecca3;">
+        <div class="icon">🔄</div>
+        <div class="label">分块恢复次数</div>
+        <div class="value" id="recoveryCount" style="color: #4ecca3;">0</div>
+      </div>
+      <div class="stat-card" style="border-color: #ffc107;">
+        <div class="icon">⭐</div>
+        <div class="label">平均信誉分</div>
+        <div class="value" id="avgReputation" style="color: #ffc107;">0</div>
+      </div>
+      <div class="stat-card" style="border-color: #ff6b6b;">
+        <div class="icon">🚫</div>
+        <div class="label">受限节点</div>
+        <div class="value" id="restrictedNodes" style="color: #ff6b6b;">0</div>
+      </div>
+    </div>
+
+    <div class="main-content">
+      <div class="panel">
+        <div class="panel-header">
+          <h2>🏆 信誉分排行榜</h2>
+          <button class="refresh-btn" onclick="refreshLeaderboard()">🔄 刷新</button>
+        </div>
+        <div id="leaderboardContainer"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>📊 分块冗余状态</h2>
+          <button class="refresh-btn" onclick="refreshData()">🔄 刷新</button>
+        </div>
+        <div id="chunkStatusContainer"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>📡 节点列表</h2>
+        </div>
+        <div id="nodeTableContainer">
+          <div class="no-data">
+            <div class="icon">📭</div>
+            <p>暂无节点数据</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel chart-container">
+        <div class="chart-header">
+          <h2>📈 流量趋势</h2>
+          <div class="chart-buttons">
+            <button class="chart-btn active" onclick="setChartMode('upload')">上传</button>
+            <button class="chart-btn" onclick="setChartMode('download')">下载</button>
+            <button class="chart-btn" onclick="setChartMode('both')">全部</button>
+          </div>
+        </div>
+        <div class="chart" id="trafficChart">
+          <canvas id="chartCanvas" style="width: 100%; height: 100%;"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    P2P CDN 管理系统 v1.0 | 基于 WebRTC 的去中心化内容分发网络
+  </div>
+
+  <script>
+    let chartMode = 'upload';
+    let trafficHistory = {
+      upload: [],
+      download: [],
+      timestamps: []
+    };
+    let maxHistoryPoints = 30;
+
+    function formatSize(bytes) {
+      if (bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function formatUptime(ms) {
+      const seconds = Math.floor(ms / 1000);
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    async function fetchStats() {
+      try {
+        const response = await fetch('/api/stats');
+        return await response.json();
+      } catch (error) {
+        console.error('获取统计数据失败:', error);
+        return null;
+      }
+    }
+
+    function updateStats(stats) {
+      if (!stats) return;
+
+      document.getElementById('onlineCount').textContent = stats.onlineCount;
+      document.getElementById('totalUpload').textContent = formatSize(stats.totalUpload);
+      document.getElementById('totalDownload').textContent = formatSize(stats.totalDownload);
+      document.getElementById('uptime').textContent = formatUptime(stats.uptime);
+      document.getElementById('missingChunks').textContent = stats.missingChunkCount || 0;
+      document.getElementById('recoveryCount').textContent = stats.chunkRecoveryCount || 0;
+      document.getElementById('avgReputation').textContent = stats.avgReputation || 0;
+
+      const restrictedCount = stats.nodes ? stats.nodes.filter(n => n.isRestricted).length : 0;
+      document.getElementById('restrictedNodes').textContent = restrictedCount;
+
+      trafficHistory.upload.push(stats.totalUpload);
+      trafficHistory.download.push(stats.totalDownload);
+      trafficHistory.timestamps.push(new Date());
+
+      if (trafficHistory.upload.length > maxHistoryPoints) {
+        trafficHistory.upload.shift();
+        trafficHistory.download.shift();
+        trafficHistory.timestamps.shift();
+      }
+
+      updateChunkStatus(stats.chunkAvailability);
+      updateNodeTable(stats.nodes);
+      drawChart();
+    }
+
+    async function refreshLeaderboard() {
+      try {
+        const response = await fetch('/api/reputation/leaderboard?limit=20');
+        const leaderboard = await response.json();
+        updateLeaderboard(leaderboard);
+      } catch (error) {
+        console.error('获取排行榜失败:', error);
+      }
+    }
+
+    function updateLeaderboard(leaderboard) {
+      const container = document.getElementById('leaderboardContainer');
+
+      if (!leaderboard || leaderboard.length === 0) {
+        container.innerHTML = `
+          <div class="no-data">
+            <div class="icon">🏆</div>
+            <p>暂无排行数据</p>
+          </div>
+        `;
+        return;
+      }
+
+      let html = `
+        <table class="node-table">
+          <thead>
+            <tr>
+              <th>排名</th>
+              <th>节点ID</th>
+              <th>信誉分</th>
+              <th>上传量</th>
+              <th>下载量</th>
+              <th>上传/下载比</th>
+              <th>状态</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      leaderboard.forEach((entry, index) => {
+        const ratio = entry.downloaded > 0 ? (entry.uploaded / entry.downloaded).toFixed(2) : (entry.uploaded > 0 ? '∞' : '0.00');
+        let reputationColor = '#4ecca3';
+        let statusBadge = '<span class="status-badge online">正常</span>';
+        
+        if (entry.reputation < 20) {
+          reputationColor = '#e94560';
+          statusBadge = '<span class="status-badge" style="background: #e94560;">受限</span>';
+        } else if (entry.reputation < 50) {
+          reputationColor = '#ffc107';
+        }
+
+        const medal = index < 3 ? ['🥇', '🥈', '🥉'][index] : `#${index + 1}`;
+
+        html += `
+          <tr>
+            <td style="font-size: 1.2em;">${medal}</td>
+            <td class="node-id">${entry.nodeId.substring(0, 16)}...</td>
+            <td style="color: ${reputationColor}; font-weight: bold; font-size: 1.1em;">${entry.reputation}</td>
+            <td>${formatSize(entry.uploaded)}</td>
+            <td>${formatSize(entry.downloaded)}</td>
+            <td>${ratio}</td>
+            <td>${statusBadge} ${entry.isOnline ? '<span style="color: #4ecca3;">🟢</span>' : '<span style="color: #6c757d;">⚪</span>'}</td>
+          </tr>
+        `;
+      });
+
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    }
+
+    function updateChunkStatus(chunkAvailability) {
+      const container = document.getElementById('chunkStatusContainer');
+
+      if (!chunkAvailability || chunkAvailability.length === 0) {
+        container.innerHTML = `
+          <div class="no-data">
+            <div class="icon">📦</div>
+            <p>暂无分块数据</p>
+          </div>
+        `;
+        return;
+      }
+
+      let html = `
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; padding: 10px;">
+      `;
+
+      chunkAvailability.forEach(chunk => {
+        let bgColor = '#4ecca3';
+        let borderColor = '#4ecca3';
+        let status = '正常';
+
+        if (chunk.isMissing) {
+          bgColor = '#e94560';
+          borderColor = '#e94560';
+          status = '缺失';
+        } else if (chunk.holders === 1) {
+          bgColor = '#ffc107';
+          borderColor = '#ffc107';
+          status = '单点';
+        } else if (chunk.holders === 0) {
+          bgColor = '#6c757d';
+          borderColor = '#6c757d';
+          status = '未分发';
+        }
+
+        html += `
+          <div style="
+            width: 45px;
+            height: 45px;
+            background: ${bgColor};
+            border: 2px solid ${borderColor};
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75em;
+            color: white;
+            font-weight: bold;
+          " title="分块 ${chunk.index}: ${chunk.holders} 个持有者 - ${status}">
+            <div>${chunk.index}</div>
+            <div style="font-size: 0.65em;">${chunk.holders}👤</div>
+          </div>
+        `;
+      });
+
+      html += '</div>';
+      html += `
+        <div style="display: flex; gap: 20px; margin-top: 15px; padding: 10px; background: #1a1a2e; border-radius: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 15px; height: 15px; background: #4ecca3; border-radius: 3px;"></div>
+            <span style="color: #a0a0a0; font-size: 0.85em;">正常 (多节点)</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 15px; height: 15px; background: #ffc107; border-radius: 3px;"></div>
+            <span style="color: #a0a0a0; font-size: 0.85em;">单点 (1个节点)</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 15px; height: 15px; background: #e94560; border-radius: 3px;"></div>
+            <span style="color: #a0a0a0; font-size: 0.85em;">缺失 (0个节点)</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 15px; height: 15px; background: #6c757d; border-radius: 3px;"></div>
+            <span style="color: #a0a0a0; font-size: 0.85em;">未分发</span>
+          </div>
+        </div>
+      `;
+
+      container.innerHTML = html;
+    }
+
+    function updateNodeTable(nodes) {
+      const container = document.getElementById('nodeTableContainer');
+
+      if (!nodes || nodes.length === 0) {
+        container.innerHTML = `
+          <div class="no-data">
+            <div class="icon">📭</div>
+            <p>暂无在线节点</p>
+          </div>
+        `;
+        return;
+      }
+
+      let tableHTML = `
+        <table class="node-table">
+          <thead>
+            <tr>
+              <th>节点ID</th>
+              <th>IP地址</th>
+              <th>信誉分</th>
+              <th>拥有块数</th>
+              <th>已上传</th>
+              <th>已下载</th>
+              <th>上传/下载比</th>
+              <th>连接时长</th>
+              <th>状态</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      nodes.forEach(node => {
+        const connectedTime = Date.now() - node.connectedAt;
+        const ratio = node.downloaded > 0 ? (node.uploaded / node.downloaded).toFixed(2) : (node.uploaded > 0 ? '∞' : '0.00');
+        let reputationColor = '#4ecca3';
+        
+        if (node.reputation < 20) {
+          reputationColor = '#e94560';
+        } else if (node.reputation < 50) {
+          reputationColor = '#ffc107';
+        }
+        
+        tableHTML += `
+          <tr>
+            <td class="node-id">${node.id.substring(0, 16)}...</td>
+            <td>${node.ip}</td>
+            <td style="color: ${reputationColor}; font-weight: bold;">${node.reputation}</td>
+            <td>${node.hasChunks} 块</td>
+            <td>${formatSize(node.uploaded)}</td>
+            <td>${formatSize(node.downloaded)}</td>
+            <td>${ratio}</td>
+            <td>${formatUptime(connectedTime)}</td>
+            <td>${node.isRestricted 
+              ? '<span class="status-badge" style="background: #e94560;">受限</span>' 
+              : '<span class="status-badge online">在线</span>'}</td>
+          </tr>
+        `;
+      });
+
+      tableHTML += '</tbody></table>';
+      container.innerHTML = tableHTML;
+    }
+
+    function drawChart() {
+      const canvas = document.getElementById('chartCanvas');
+      const ctx = canvas.getContext('2d');
+
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (trafficHistory.timestamps.length < 2) {
+        ctx.fillStyle = '#6c757d';
+        ctx.font = '16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('等待更多数据...', canvas.width / 2, canvas.height / 2);
+        return;
+      }
+
+      const padding = { top: 30, right: 30, bottom: 40, left: 60 };
+      const chartWidth = canvas.width - padding.left - padding.right;
+      const chartHeight = canvas.height - padding.top - padding.bottom;
+
+      let maxUpload = Math.max(...trafficHistory.upload, 1);
+      let maxDownload = Math.max(...trafficHistory.download, 1);
+      let maxValue = 0;
+
+      if (chartMode === 'upload') {
+        maxValue = maxUpload;
+      } else if (chartMode === 'download') {
+        maxValue = maxDownload;
+      } else {
+        maxValue = Math.max(maxUpload, maxDownload);
+      }
+
+      ctx.strokeStyle = '#2a2a4a';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 5; i++) {
+        const y = padding.top + (chartHeight / 5) * i;
+        ctx.beginPath();
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(canvas.width - padding.right, y);
+        ctx.stroke();
+
+        const value = maxValue - (maxValue / 5) * i;
+        ctx.fillStyle = '#a0a0a0';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(formatSize(value), padding.left - 10, y + 4);
+      }
+
+      const points = trafficHistory.timestamps.length;
+      const xStep = chartWidth / (points - 1);
+
+      if (chartMode === 'upload' || chartMode === 'both') {
+        ctx.strokeStyle = '#4ecca3';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        trafficHistory.upload.forEach((value, i) => {
+          const x = padding.left + xStep * i;
+          const y = padding.top + chartHeight - (value / maxValue) * chartHeight;
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        });
+        ctx.stroke();
+
+        trafficHistory.upload.forEach((value, i) => {
+          const x = padding.left + xStep * i;
+          const y = padding.top + chartHeight - (value / maxValue) * chartHeight;
+          ctx.fillStyle = '#4ecca3';
+          ctx.beginPath();
+          ctx.arc(x, y, 4, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+
+      if (chartMode === 'download' || chartMode === 'both') {
+        ctx.strokeStyle = '#00d9ff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        trafficHistory.download.forEach((value, i) => {
+          const x = padding.left + xStep * i;
+          const y = padding.top + chartHeight - (value / maxValue) * chartHeight;
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        });
+        ctx.stroke();
+
+        trafficHistory.download.forEach((value, i) => {
+          const x = padding.left + xStep * i;
+          const y = padding.top + chartHeight - (value / maxValue) * chartHeight;
+          ctx.fillStyle = '#00d9ff';
+          ctx.beginPath();
+          ctx.arc(x, y, 4, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+
+      ctx.fillStyle = '#a0a0a0';
+      ctx.font = '11px sans-serif';
+      ctx.textAlign = 'center';
+      const labelStep = Math.ceil(points / 6);
+      trafficHistory.timestamps.forEach((time, i) => {
+        if (i % labelStep === 0) {
+          const x = padding.left + xStep * i;
+          ctx.fillText(time.toLocaleTimeString(), x, canvas.height - 10);
+        }
+      });
+
+      const legendY = 10;
+      if (chartMode === 'upload' || chartMode === 'both') {
+        ctx.fillStyle = '#4ecca3';
+        ctx.fillRect(padding.left, legendY, 10, 10);
+        ctx.fillStyle = '#a0a0a0';
+        ctx.textAlign = 'left';
+        ctx.fillText('上传', padding.left + 15, legendY + 9);
+      }
+      if (chartMode === 'download' || chartMode === 'both') {
+        ctx.fillStyle = '#00d9ff';
+        ctx.fillRect(padding.left + 80, legendY, 10, 10);
+        ctx.fillStyle = '#a0a0a0';
+        ctx.textAlign = 'left';
+        ctx.fillText('下载', padding.left + 95, legendY + 9);
+      }
+    }
+
+    function setChartMode(mode) {
+      chartMode = mode;
+      document.querySelectorAll('.chart-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      drawChart();
+    }
+
+    async function refreshData() {
+      const stats = await fetchStats();
+      updateStats(stats);
+      refreshLeaderboard();
+    }
+
+    setInterval(refreshData, 2000);
+    refreshData();
+
+    window.addEventListener('resize', drawChart);
+  </script>
+</body>
+</html>

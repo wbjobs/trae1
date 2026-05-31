@@ -1,0 +1,17 @@
+{
+  "name": "webtorrent-p2p-cdn",
+  "version": "1.0.0",
+  "description": "基于WebRTC的P2P静态资源加速系统",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "generate": "node chunk-generator.js",
+    "dev": "node server.js",
+    "setup": "npm install && npm run generate && npm start"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "ws": "^8.16.0"
+  }
+}

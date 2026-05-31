@@ -1,0 +1,76 @@
+{
+  "nodes": {
+    "cf37aaf167f544a6b7aca2bf026aaa5b0915a78c": 5
+  },
+  "history": {
+    "cf37aaf167f544a6b7aca2bf026aaa5b0915a78c": [
+      {
+        "timestamp": 1779556919288,
+        "uploaded": 0,
+        "downloaded": 1048576,
+        "reputation": 5
+      },
+      {
+        "timestamp": 1779556919289,
+        "uploaded": 0,
+        "downloaded": 2097152,
+        "reputation": 5
+      },
+      {
+        "timestamp": 1779556919290,
+        "uploaded": 0,
+        "downloaded": 3145728,
+        "reputation": 5
+      },
+      {
+        "timestamp": 1779556919290,
+        "uploaded": 0,
+        "downloaded": 4194304,
+        "reputation": 5
+      },
+      {
+        "timestamp": 1779556919291,
+        "uploaded": 0,
+        "downloaded": 5242880,
+        "reputation": 5
+      },
+      {
+        "timestamp": 1779556919291,
+        "uploaded": 0,
+        "downloaded": 6291456,
+        "reputation": 5
+      },
+      {
+        "timestamp": 1779556919291,
+        "uploaded": 0,
+        "downloaded": 7340032,
+        "reputation": 5
+      },
+      {
+        "timestamp": 1779556919291,
+        "uploaded": 0,
+        "downloaded": 8388608,
+        "reputation": 5
+      },
+      {
+        "timestamp": 1779556919292,
+        "uploaded": 0,
+        "downloaded": 9437184,
+        "reputation": 5
+      },
+      {
+        "timestamp": 1779556919314,
+        "uploaded": 0,
+        "downloaded": 10485760,
+        "reputation": 5
+      },
+      {
+        "timestamp": 1779556919320,
+        "uploaded": 0,
+        "downloaded": 10489936,
+        "reputation": 5
+      }
+    ]
+  },
+  "updatedAt": "2026-05-23T17:27:27.127Z"
+}
