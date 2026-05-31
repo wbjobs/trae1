@@ -1,0 +1,18 @@
+package com.sharding.sync;
+
+import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.annotation.EnableScheduling;
+
+@EnableAsync
+@EnableScheduling
+@MapperScan("com.sharding.sync.mapper")
+@SpringBootApplication
+public class ShardingSyncApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(ShardingSyncApplication.class, args);
+    }
+}

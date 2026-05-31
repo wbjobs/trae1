@@ -1,0 +1,50 @@
+server:
+  port: 8088
+  servlet:
+    context-path: /sync
+
+spring:
+  application:
+    name: mycat-sharding-sync
+  profiles:
+    active: dev
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  type-aliases-package: com.sharding.sync.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+
+mycat:
+  admin-url: http://127.0.0.1:9066
+  username: root
+  password: 123456
+  logic-database: TESTDB
+  sync:
+    thread-pool-size: 16
+    batch-size: 500
+    retry-times: 3
+    retry-interval-ms: 2000
+    fetch-size: 1000
+  binlog:
+    enabled: true
+    position-file: binlog-position.json
+    poll-interval-ms: 1000
+
+sync:
+  schedule:
+    full-cron: "0 0 2 * * ?"
+    incremental-cron: "0 */5 * * * ?"
+    check-cron: "0 0 4 * * ?"
+    check-auto-fix-cron: "0 15 4 * * ?"
+    fix-cron: "0 30 4 * * ?"
+    retry-cron: "0 */10 * * * ?"
+
+logging:
+  level:
+    root: INFO
+    com.sharding.sync: DEBUG

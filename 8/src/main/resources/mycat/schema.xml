@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  MyCat schema.xml 示例配置
+  放置路径: mycat/conf/schema.xml
+
+  该示例将逻辑库 TESTDB 中的逻辑表 t_order、t_order_item
+  按分片键 user_id、order_id 路由到两个物理库 db0、db1。
+-->
+<!DOCTYPE mycat:schema SYSTEM "schema.dtd">
+<mycat:schema xmlns:mycat="http://io.mycat/">
+
+    <schema name="TESTDB" checkSQLschema="false" sqlMaxLimit="100">
+        <table name="t_order"      dataNode="dn$0-1" rule="mod-long-user_id"/>
+        <table name="t_order_item" dataNode="dn$0-1" rule="mod-long-order_id"/>
+        <table name="t_user"       dataNode="dn$0-1" rule="mod-long-id"/>
+        <table name="t_product"    dataNode="dn$0-1" rule="mod-long-id"/>
+    </schema>
+
+    <dataNode name="dn0" dataHost="host0" database="db0"/>
+    <dataNode name="dn1" dataHost="host1" database="db1"/>
+
+    <dataHost name="host0" maxCon="1000" minCon="10" balance="0"
+              writeType="0" dbType="mysql" dbDriver="native" switchType="1" slaveThreshold="100">
+        <heartbeat>select 1</heartbeat>
+        <writeHost host="hostM0" url="127.0.0.1:3306" user="root" password="123456"/>
+    </dataHost>
+
+    <dataHost name="host1" maxCon="1000" minCon="10" balance="0"
+              writeType="0" dbType="mysql" dbDriver="native" switchType="1" slaveThreshold="100">
+        <heartbeat>select 1</heartbeat>
+        <writeHost host="hostM1" url="127.0.0.1:3307" user="root" password="123456"/>
+    </dataHost>
+
+</mycat:schema>

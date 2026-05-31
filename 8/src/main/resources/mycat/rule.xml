@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  MyCat rule.xml 示例配置
+  放置路径: mycat/conf/rule.xml
+
+  定义分表算法: 按 long 取模, 路由到 2 个分片。
+-->
+<!DOCTYPE mycat:rule SYSTEM "rule.dtd">
+<mycat:rule xmlns:mycat="http://io.mycat/">
+
+    <tableRule name="mod-long-user_id">
+        <rule>
+            <columns>user_id</columns>
+            <algorithm>mod-long</algorithm>
+        </rule>
+    </tableRule>
+
+    <tableRule name="mod-long-order_id">
+        <rule>
+            <columns>order_id</columns>
+            <algorithm>mod-long</algorithm>
+        </rule>
+    </tableRule>
+
+    <tableRule name="mod-long-id">
+        <rule>
+            <columns>id</columns>
+            <algorithm>mod-long</algorithm>
+        </rule>
+    </tableRule>
+
+    <function name="mod-long" class="io.mycat.route.function.PartitionByMod">
+        <property name="count">2</property>
+    </function>
+
+</mycat:rule>
