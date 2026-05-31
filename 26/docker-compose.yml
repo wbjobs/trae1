@@ -1,0 +1,27 @@
+services:
+  influxdb:
+    image: influxdb:2.7
+    container_name: gh-influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: password123
+      DOCKER_INFLUXDB_INIT_ORG: greenhouse
+      DOCKER_INFLUXDB_INIT_BUCKET: greenhouse
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: dev-token
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: gh-mosquitto
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+
+volumes:
+  influxdb-data:
